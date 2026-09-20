@@ -1,0 +1,60 @@
+# Session authority and gateway admission
+
+Proposed integration contract. Existing fold methods sign with the fold role key; they do not currently implement this session signing path. This change extends that integration and must be tested against the pinned core/kernel protocol.
+
+## Principals and delegation
+
+The orchestrator is the operator principal for milestone one. The runtime is a service principal that executes instructions and holds session signing keys; key custody does not make it the orchestrator or decision authority. Every Task records `delegatedBy` and an admitted Task-creation delegation to the runtime service key, scoped to its reserved logical ID/Node. A separate post-Task Endorsement delegates session acts to the newly created session key; the two grants are not interchangeable. Future orchestrator agents must hold explicit issuance/delegation authority before creating subtasks.
+
+The deployment issues a Badge to the session key. The orchestrator issues a task-scoped Endorsement to the **same session key**, permitting the required session act Kinds. SessionBinding is session-signed and its admission `authority` cites both that deployment Badge and the orchestrator-to-session Endorsement. Managed acts also cite both. The kernel intersects their allowed Kinds and terms; policy checks task, role and target scope. A later decision Endorsement is scoped specifically to decision Kinds and is exercised only on those acts.
+
+An operator Badge whose subject is the operator cannot be directly cited as a session's authority: core requires each cited authority's subject to match the acting key. If the orchestrator acts under a Badge, its Endorsement exercises that Badge as `parent`; the resolved authority chain then preserves the orchestrator Badge and deployment issuance. An operator acting as its own principal issues a root Endorsement without inventing a Badge. Binding fields retain the delegation refs as well as the canonical envelope's authority. This is a protocol-compatible delegation link, not a descriptive operator-name field.
+
+## Credential setup
+
+1. Runtime creates a distinct Ed25519 key for a new session and keeps it **ephemeral in-process**, never in a file or raw-key CLI API. Record policy-enforced `custody: runtime-held`, `profile: cooperative-local`, and `signerReachability: same-user-cooperative-limit`. A published Principal profile repeats custody; it never claims autonomous self ownership.
+2. Deployment authority issues a term-limited Badge whose subject is the session key, `subjectKind: agent` for model sessions (`service` for runtime action sessions), `mayIssue: false`, and explicit allowed Kinds. Issuer is signature 1; subject countersigns as signature 2. Obtain the task-scoped orchestrator Endorsement before managed admissions. Free-form credential scope does not enforce itself: admission policy checks it.
+3. Session key admits its gateway AgentSession span citing the Badge and delegation. Session-signed SessionBinding records Task, context, span admission, key, authority, custody/profile and generation. Its resource span ref is accompanied by its immutable admission event.
+4. Enable routing only after binding and launch intent are admitted. Authority loss refuses new managed acts. Renewal requires an authorized, separately admitted credential; restart never silently remints revoked authority. Terminal closure destroys the session key and route credential.
+
+Badge and task-delegation `kinds` must enumerate the role's actual admissions. A model session needs `gateway.r5e.io/v1alpha1/{AgentSession,Prompt,LlmCall,ToolCall}`, `recurse.r5e.io/v1alpha1/{SessionBinding,ManagedRequest,Artifact}` and `core.r5e.io/v1/CasObject` when admitting bytes. A reviewer additionally needs `recurse.r5e.io/v1alpha1/Review`; a delegated decision maker additionally needs `recurse.r5e.io/v1alpha1/Decision`. These brace lists expand to individual fully qualified strings in credentials, never literal braces or `*`. Runtime action sessions receive only their needed span/binding/ToolCall/artifact/CAS Kinds. Control-plane ContextManifest, Task and lifecycle records use separately scoped service authority; session credentials do not implicitly authorize them. Policy denies a managed session key acting with empty authority even though the general protocol permits self-acts.
+
+The signature proves a runtime-held session credential acted under cited authority. It does not prove model authorship, autonomous custody, cognitive independence or inability of the operator to impersonate a session. A separate reviewer key/provider/context makes structural independence inspectable under those limits.
+
+## Boot and reconciliation
+
+Execution generation includes a fresh per-boot identifier and per-run identifier. The signer refuses all pre-boot generations, including admitted bindings recovered from history. Ephemeral keys cannot be restored from the log. Before serving ordinary mutations after restart, reconcile interrupted sessions and admit issuer-authorized revocation of unconfirmed session Badges. A narrowly scoped recovery path may record observations/revocations while the ordinary mutation gate is closed. If authority or chain availability prevents required revocation, keep that gate closed. Never revive a previous binding merely because its Badge is still in term.
+
+An LlmCall with no admitted ManagedRequest at the reader's covered checkpoint is shown as `not_dispatched` **under the managed contract**. A ManagedRequest without a confirmed dispatch/result remains uncertain; admission is not proof of dispatch. These are scoped deductions about the governed path, not observations of all host traffic.
+
+## Signing bridge
+
+Use an operator-permissioned Unix socket **plus a gateway-held per-boot shared secret** on the signer channel. Rotate it on runtime/gateway restart; reauthenticate current-generation bindings. Do not give this secret to the CLI, include it in artifacts or confuse it with the per-run routing credential. Same-user reachability/secret theft remains a cooperative-profile limit recorded on SessionBinding, not an OS containment guarantee.
+
+Register a session-scoped route, credential and generation before launch. Neither an account header nor a supplied session string selects an arbitrary signer. This live binding dies with the process. It carries routing state, never grants authority absent the canonical delegation and Badge.
+
+The signer takes `{kind, specBytes, authority}` on that authenticated binding. `kind` selects an allowlisted fully qualified target; named targets and origin come from registered runtime state. The runtime parses with duplicate-key rejection, canonicalises the spec, resolves and checks its span, upstreamHost, model and requestBody ref (including linked Prompt/LlmCall records), and computes `specAddress` itself. It validates the exact authority set, generates nonce, and sets `expires` no later than five minutes from signing or the credential term end, whichever is earlier. The caller cannot supply `specAddress`, nonce, expires, actor or origin. Reject extra fields rather than ignoring them. When a reviewer signs Review, require a well-formed, duplicate-key-free machine-readable findings block and exact recommendation equality; signing arbitrary free-text interpretations is prohibited. Use core canonical encoding and DSSE PAE; do not sign an opaque address or unrestricted bytes.
+
+For each supported model request:
+
+1. Resolve the registered live managed binding and its generation. Resolve the configured provider upstream **before** forwarding credentials. Unbound observed traffic cannot count as a managed session.
+2. The managed profile performs **no request-body transformation**: preserve exact inbound/outbound bytes and their digest. Capture non-secret semantic routing values; exclude authentication headers and forward them only to the selected provider. A future transformation profile must record both originals and transformed bytes explicitly.
+3. Build Prompt/LlmCall candidates using existing Kinds. Ask the signer to inspect their spec bytes. Submit its resulting envelope unchanged. The actor is the session key, citing the effective Badge and delegation; no fold-only substitute is allowed.
+4. Admit session-signed `ManagedRequest` referencing that LlmCall, SessionBinding, exact request body, method/path/upstream/transport, allowlisted semantic headers and operation ID. Both admissions must succeed before forwarding the exact bound values.
+5. Record upstream results separately under the gateway service's observation authority, citing ManagedRequest/LlmCall. Provider output is an observation, not agent-authored evidence signed on its behalf.
+
+The session's first ManagedRequest must carry the ContextManifest's rendered input verbatim. For a JSON provider body, this means a specified decoded UTF-8 input string equals the rendered bytes exactly (normal JSON escaping is allowed); record its field path and digest, and test that equality. Other harness-added input is captured separately with provenance. Refuse dispatch if the adapter cannot identify the supplied segment or the bytes differ. This verifies supplied mediation instructions, not hidden provider prompts or model cognition.
+
+The resulting canonical request still has exactly core's eight fields: origin, actor, target, specAddress, derivedFrom, authority, nonce and expires. The signer returns its DSSE envelope, never a private key. Gateway cannot silently fall back to a different signer or forward before the ManagedRequest grant. Supported tool intents use analogous session-signed ToolCall admission before release; that does not prove execution of every possible host/provider-side tool.
+
+## Lost acknowledgments and dispatch identity
+
+Before submission, durably journal `(origin, actor, nonce) → operationId`, candidate digest and envelope. This recovery journal contains no private keys or auth headers and is not a second authority. On lost admission acknowledgment, scan canonical event payloads for the recorded actor/nonce and validate the matching candidate/outcome **before any resubmission**. The kernel records nonce on attributable grants and denials. If no match is found while the original submission may still be in flight, remain uncertain: absence is not permission to resubmit. Never mint a new nonce to conceal an uncertain semantic attempt. At restart, recover journal lookups but refuse new signatures/submissions for old bindings.
+
+Serialize model requests per session. Persist dispatch intent/result; disable automatic proxy retries after possible dispatch and configure documented client retries off where available. HTTP retry identity is not a core nonce. If upstream may have accepted a request but its result is lost, mark `outcome_unknown` and refuse any further forwarding on the binding—including automatic client retries—until recorded reconciliation. Identical known operations may return stored results without redispatch; conflicting payloads refuse. Without a stable client retry ID, conservatively block the session rather than deduplicating by body hash.
+
+## Negative and fault tests
+
+Caller-supplied specAddress/nonce/expires; inspectable spec fields mismatching registered span/model/upstream/body; empty authority; wrong signature/Badge/delegation subject; expired/revoked terms; stale boot generation; old channel secret; replay; unauthenticated signer access; widened role; tool parse failure; mutation of outbound bytes; first-input mismatch; signer outage. Confirm no corresponding managed dispatch, and preserve attributable refusals under core rules. Malformed unattributable input is not a signed event.
+
+Also test: LlmCall admitted without ManagedRequest; crash with admitted binding and live unconfirmed process; revocation failure keeps mutations closed; admission accepted with acknowledgment lost and nonce lookup recovers it; upstream accepted then dropped response with actual client retries and **zero second dispatch**. A metadata-only test or a successful no-tool round trip cannot establish this full contract.
