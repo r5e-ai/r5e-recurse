@@ -13,6 +13,7 @@ cache:
 
 verify:
   before_script:
+    - apt-get update -qq && apt-get install -y -qq git python3
     - mix local.hex --force
     - mix local.rebar --force
     - mix deps.get --check-locked

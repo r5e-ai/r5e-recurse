@@ -17,3 +17,5 @@ Every Recurse path that reaches the adapter returns a Recurse policy block. Upst
 A schema or authority refusal can happen before authorization and therefore has no Recurse evaluation. An admitted Recurse request that reached authorization but has no Recurse block is evidence that this adapter did not enforce it. Installing the client library alone is not an enforcement claim.
 
 The deployment contract tests in `test/contract/policy_base_test.exs` need the kernel, fold, native Cedar engine and kernel test helpers loaded. They exercise the actual kernel HTTP router with signed requests, export verification under the house posture, and a fresh-chain bootstrap/rerun. The client-only test environment marks this suite skipped when the tracked-facts API is absent; a client-only green run is not enforcement evidence. Deployment CI must run the suite with those dependencies loaded and report zero skips.
+
+See [operator custody](operator-custody.md) for the custody posture and its limits.

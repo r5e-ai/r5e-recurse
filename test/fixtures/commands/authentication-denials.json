@@ -1,0 +1,272 @@
+{
+  "source": {
+    "kernel_image": "r5e/kernel:recurse-a1-debian-352b0e0d",
+    "kernel_revision": "352b0e0d79eba23b1883f83a2a654fc19d6699c2",
+    "scope": "Generated on a disposable isolated chain; public records only; no private key exported."
+  },
+  "origin": "sha256:77b7dc134956df23a0190f458b280ead0bb03f7d6d4db1d96098da04e1ffe7a9",
+  "original": {
+    "event": {
+      "hash": "sha256:bf8cc4f195f28f37a308341732c7f0a9127e7bcdd9c1f3928dd7a6ed9e0eb41b",
+      "kind": "admission.denied",
+      "payload": "sha256:db07cbe2ea8421dd4be9e7f1fd2b23299e11ef5d64ab3363d2922ed92470500b",
+      "prev": "sha256:4bd5b63ad73f5465fcd4944a68fbfb0040701b58632dbcc6da106485f8b8665d",
+      "seq": 15,
+      "ts": "2026-09-22T05:04:49Z"
+    },
+    "payload": {
+      "actor": {
+        "algorithm": "ed25519",
+        "id": "key:ed25519:sha256:7be550e140ee81d7ca4746d3b9b158e789d43625f7458f2884fc06c85ec92c12",
+        "publicKey": "121L8BnLiuch4CCWg4dxAGvv6yEzAwfRv5HuIVIinfU="
+      },
+      "assurance": "observed",
+      "authority": [],
+      "expires": "2026-09-22T06:04:49Z",
+      "identity": "signed",
+      "nonce": "AAECAwQFBgcICQoLDA0ODw==",
+      "origin": "sha256:77b7dc134956df23a0190f458b280ead0bb03f7d6d4db1d96098da04e1ffe7a9",
+      "outcome": "denied",
+      "reason": "validateStructure: unknown Kind recurse.r5e.io/v1alpha1/Command \u2014 Kinds enter through admission first",
+      "resolvedAuthority": [],
+      "resolvedRefs": [],
+      "scopeDefaulted": null,
+      "signed": {
+        "payload": "eyJhY3RvciI6ImtleTplZDI1NTE5OnNoYTI1Njo3YmU1NTBlMTQwZWU4MWQ3Y2E0NzQ2ZDNiOWIxNThlNzg5ZDQzNjI1Zjc0NThmMjg4NGZjMDZjODVlYzkyYzEyIiwiYXV0aG9yaXR5IjpbXSwiZGVyaXZlZEZyb20iOm51bGwsImV4cGlyZXMiOiIyMDI2LTA5LTIyVDA2OjA0OjQ5WiIsIm5vbmNlIjoiQUFFQ0F3UUZCZ2NJQ1FvTERBME9Edz09Iiwib3JpZ2luIjoic2hhMjU2Ojc3YjdkYzEzNDk1NmRmMjNhMDE5MGY0NThiMjgwZWFkMGJiMDNmN2Q2ZDRkYjFkOTYwOThkYTA0ZTFmZmU3YTkiLCJzcGVjQWRkcmVzcyI6InNoYTI1NjoxNzg4MjJlNjIxMDYzM2VlYzA5ZDU0MDFiMDg0NGE5ZDZhYmNkMGRlM2EzMTY2YWIwNWZjMzM0MjgyZWFlMjg5IiwidGFyZ2V0Ijp7Imdyb3VwIjoicmVjdXJzZS5yNWUuaW8iLCJraW5kIjoiQ29tbWFuZCIsIm5hbWUiOm51bGwsInZlcnNpb24iOiJ2MWFscGhhMSJ9fQ==",
+        "payloadType": "application/vnd.r5e.admission-request+json;v=1",
+        "publicKeys": [
+          {
+            "algorithm": "ed25519",
+            "bytes": "121L8BnLiuch4CCWg4dxAGvv6yEzAwfRv5HuIVIinfU=",
+            "keyid": "key:ed25519:sha256:7be550e140ee81d7ca4746d3b9b158e789d43625f7458f2884fc06c85ec92c12"
+          }
+        ],
+        "signatures": [
+          {
+            "keyid": "key:ed25519:sha256:7be550e140ee81d7ca4746d3b9b158e789d43625f7458f2884fc06c85ec92c12",
+            "sig": "J6jtKZMdkIeWAmNWfvlfetVqRXUFPEMCfM9OPgSQKYcwP8g4aKcaYilwR3rr9Aj9HePTqFEZ9+ST7WWAwNwSDg=="
+          }
+        ]
+      },
+      "signers": [
+        "key:ed25519:sha256:7be550e140ee81d7ca4746d3b9b158e789d43625f7458f2884fc06c85ec92c12"
+      ],
+      "spec": {
+        "commandId": "fixture-original",
+        "operation": "submit_task",
+        "payloadDigest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "target": "fixture-node"
+      },
+      "submittedTarget": {
+        "group": "recurse.r5e.io",
+        "kind": "Command",
+        "name": null,
+        "version": "v1alpha1"
+      },
+      "target": {
+        "group": "recurse.r5e.io",
+        "kind": "Command",
+        "name": null,
+        "version": "v1alpha1"
+      }
+    }
+  },
+  "replay": {
+    "event": {
+      "hash": "sha256:3b322fa7f4568d8cabbbe340b302c7c7b9dac66f1ce48975079ff79eec3e1279",
+      "kind": "admission.denied",
+      "payload": "sha256:f8b08e2f852e84964a8e8a61e86f79e29209d3f880903be290d5e93dacb2a9f1",
+      "prev": "sha256:bf8cc4f195f28f37a308341732c7f0a9127e7bcdd9c1f3928dd7a6ed9e0eb41b",
+      "seq": 16,
+      "ts": "2026-09-22T05:04:49Z"
+    },
+    "payload": {
+      "actor": {
+        "algorithm": "ed25519",
+        "id": "key:ed25519:sha256:7be550e140ee81d7ca4746d3b9b158e789d43625f7458f2884fc06c85ec92c12",
+        "publicKey": "121L8BnLiuch4CCWg4dxAGvv6yEzAwfRv5HuIVIinfU="
+      },
+      "assurance": "observed",
+      "authority": [],
+      "expires": "2026-09-22T06:04:49Z",
+      "identity": "signed",
+      "nonce": "AAECAwQFBgcICQoLDA0ODw==",
+      "origin": "sha256:77b7dc134956df23a0190f458b280ead0bb03f7d6d4db1d96098da04e1ffe7a9",
+      "outcome": "denied",
+      "reason": "authenticate: nonce replayed: this chain has already recorded \"AAECAwQFBgcICQoLDA0ODw==\" from this signer; the earlier claim stands",
+      "resolvedAuthority": [],
+      "resolvedRefs": [],
+      "scopeDefaulted": null,
+      "signed": {
+        "payload": "eyJhY3RvciI6ImtleTplZDI1NTE5OnNoYTI1Njo3YmU1NTBlMTQwZWU4MWQ3Y2E0NzQ2ZDNiOWIxNThlNzg5ZDQzNjI1Zjc0NThmMjg4NGZjMDZjODVlYzkyYzEyIiwiYXV0aG9yaXR5IjpbXSwiZGVyaXZlZEZyb20iOm51bGwsImV4cGlyZXMiOiIyMDI2LTA5LTIyVDA2OjA0OjQ5WiIsIm5vbmNlIjoiQUFFQ0F3UUZCZ2NJQ1FvTERBME9Edz09Iiwib3JpZ2luIjoic2hhMjU2Ojc3YjdkYzEzNDk1NmRmMjNhMDE5MGY0NThiMjgwZWFkMGJiMDNmN2Q2ZDRkYjFkOTYwOThkYTA0ZTFmZmU3YTkiLCJzcGVjQWRkcmVzcyI6InNoYTI1NjoxNzg4MjJlNjIxMDYzM2VlYzA5ZDU0MDFiMDg0NGE5ZDZhYmNkMGRlM2EzMTY2YWIwNWZjMzM0MjgyZWFlMjg5IiwidGFyZ2V0Ijp7Imdyb3VwIjoicmVjdXJzZS5yNWUuaW8iLCJraW5kIjoiQ29tbWFuZCIsIm5hbWUiOm51bGwsInZlcnNpb24iOiJ2MWFscGhhMSJ9fQ==",
+        "payloadType": "application/vnd.r5e.admission-request+json;v=1",
+        "publicKeys": [
+          {
+            "algorithm": "ed25519",
+            "bytes": "121L8BnLiuch4CCWg4dxAGvv6yEzAwfRv5HuIVIinfU=",
+            "keyid": "key:ed25519:sha256:7be550e140ee81d7ca4746d3b9b158e789d43625f7458f2884fc06c85ec92c12"
+          }
+        ],
+        "signatures": [
+          {
+            "keyid": "key:ed25519:sha256:7be550e140ee81d7ca4746d3b9b158e789d43625f7458f2884fc06c85ec92c12",
+            "sig": "J6jtKZMdkIeWAmNWfvlfetVqRXUFPEMCfM9OPgSQKYcwP8g4aKcaYilwR3rr9Aj9HePTqFEZ9+ST7WWAwNwSDg=="
+          }
+        ]
+      },
+      "signers": [
+        "key:ed25519:sha256:7be550e140ee81d7ca4746d3b9b158e789d43625f7458f2884fc06c85ec92c12"
+      ],
+      "spec": {
+        "commandId": "fixture-victim",
+        "operation": "submit_task",
+        "payloadDigest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "target": "fixture-node"
+      },
+      "submittedTarget": {
+        "group": "recurse.r5e.io",
+        "kind": "Command",
+        "name": null,
+        "version": "v1alpha1"
+      },
+      "target": {
+        "group": "recurse.r5e.io",
+        "kind": "Command",
+        "name": null,
+        "version": "v1alpha1"
+      }
+    }
+  },
+  "actor_mismatch": {
+    "event": {
+      "hash": "sha256:5cb136502ed7166303242a7bd0d1626108fccdabffc1d553d65661ffebc1280d",
+      "kind": "admission.denied",
+      "payload": "sha256:1aef0c19fa26629f6efc4d249dcec156c281d573cfa14554692033914ff61b5e",
+      "prev": "sha256:3b322fa7f4568d8cabbbe340b302c7c7b9dac66f1ce48975079ff79eec3e1279",
+      "seq": 17,
+      "ts": "2026-09-22T05:04:49Z"
+    },
+    "payload": {
+      "actor": {
+        "algorithm": "ed25519",
+        "id": "key:ed25519:sha256:7be550e140ee81d7ca4746d3b9b158e789d43625f7458f2884fc06c85ec92c12",
+        "publicKey": "121L8BnLiuch4CCWg4dxAGvv6yEzAwfRv5HuIVIinfU="
+      },
+      "assurance": "observed",
+      "authority": [],
+      "expires": "2026-09-22T06:04:49Z",
+      "identity": "signed",
+      "nonce": "AQIDBAUGBwgJCgsMDQ4PEA==",
+      "origin": "sha256:77b7dc134956df23a0190f458b280ead0bb03f7d6d4db1d96098da04e1ffe7a9",
+      "outcome": "denied",
+      "reason": "authenticate: actor mismatch: the request names \"key:ed25519:sha256:2222222222222222222222222222222222222222222222222222222222222222\", signer 1 is \"key:ed25519:sha256:7be550e140ee81d7ca4746d3b9b158e789d43625f7458f2884fc06c85ec92c12\"",
+      "resolvedAuthority": [],
+      "resolvedRefs": [],
+      "scopeDefaulted": null,
+      "signed": {
+        "payload": "eyJhY3RvciI6ImtleTplZDI1NTE5OnNoYTI1NjoyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyIiwiYXV0aG9yaXR5IjpbXSwiZGVyaXZlZEZyb20iOm51bGwsImV4cGlyZXMiOiIyMDI2LTA5LTIyVDA2OjA0OjQ5WiIsIm5vbmNlIjoiQVFJREJBVUdCd2dKQ2dzTURRNFBFQT09Iiwib3JpZ2luIjoic2hhMjU2Ojc3YjdkYzEzNDk1NmRmMjNhMDE5MGY0NThiMjgwZWFkMGJiMDNmN2Q2ZDRkYjFkOTYwOThkYTA0ZTFmZmU3YTkiLCJzcGVjQWRkcmVzcyI6InNoYTI1NjoxNzg4MjJlNjIxMDYzM2VlYzA5ZDU0MDFiMDg0NGE5ZDZhYmNkMGRlM2EzMTY2YWIwNWZjMzM0MjgyZWFlMjg5IiwidGFyZ2V0Ijp7Imdyb3VwIjoicmVjdXJzZS5yNWUuaW8iLCJraW5kIjoiQ29tbWFuZCIsIm5hbWUiOm51bGwsInZlcnNpb24iOiJ2MWFscGhhMSJ9fQ==",
+        "payloadType": "application/vnd.r5e.admission-request+json;v=1",
+        "publicKeys": [
+          {
+            "algorithm": "ed25519",
+            "bytes": "121L8BnLiuch4CCWg4dxAGvv6yEzAwfRv5HuIVIinfU=",
+            "keyid": "key:ed25519:sha256:7be550e140ee81d7ca4746d3b9b158e789d43625f7458f2884fc06c85ec92c12"
+          }
+        ],
+        "signatures": [
+          {
+            "keyid": "key:ed25519:sha256:7be550e140ee81d7ca4746d3b9b158e789d43625f7458f2884fc06c85ec92c12",
+            "sig": "+OxUvVDb+BgKtM1gKv42fVRwpXZRQDdcOa9xpAfYo0W0MHz5ecP9fkHs7cXPNziK5dHYfSa6OYpwg0BAn4LsCw=="
+          }
+        ]
+      },
+      "signers": [
+        "key:ed25519:sha256:7be550e140ee81d7ca4746d3b9b158e789d43625f7458f2884fc06c85ec92c12"
+      ],
+      "spec": {
+        "commandId": "fixture-victim",
+        "operation": "submit_task",
+        "payloadDigest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "target": "fixture-node"
+      },
+      "submittedTarget": {
+        "group": "recurse.r5e.io",
+        "kind": "Command",
+        "name": null,
+        "version": "v1alpha1"
+      },
+      "target": {
+        "group": "recurse.r5e.io",
+        "kind": "Command",
+        "name": null,
+        "version": "v1alpha1"
+      }
+    }
+  },
+  "wrong_origin": {
+    "event": {
+      "hash": "sha256:e23295dd785b0d0a751e847b0ab2efd892e80e9e8a639808d5f352213b1b7052",
+      "kind": "admission.denied",
+      "payload": "sha256:0dcc850a9c8b3a295b97a7cda1777e60ef2d7b6b6aed9100e823a9a149f7a652",
+      "prev": "sha256:5cb136502ed7166303242a7bd0d1626108fccdabffc1d553d65661ffebc1280d",
+      "seq": 18,
+      "ts": "2026-09-22T05:04:49Z"
+    },
+    "payload": {
+      "actor": {
+        "algorithm": "ed25519",
+        "id": "key:ed25519:sha256:7be550e140ee81d7ca4746d3b9b158e789d43625f7458f2884fc06c85ec92c12",
+        "publicKey": "121L8BnLiuch4CCWg4dxAGvv6yEzAwfRv5HuIVIinfU="
+      },
+      "assurance": "observed",
+      "authority": [],
+      "expires": "2026-09-22T06:04:49Z",
+      "identity": "signed",
+      "nonce": "AgMEBQYHCAkKCwwNDg8QEQ==",
+      "origin": "sha256:3333333333333333333333333333333333333333333333333333333333333333",
+      "outcome": "denied",
+      "reason": "authenticate: wrong origin: this chain is sha256:77b7dc134956df23a0190f458b280ead0bb03f7d6d4db1d96098da04e1ffe7a9, the request names sha256:3333333333333333333333333333333333333333333333333333333333333333",
+      "resolvedAuthority": [],
+      "resolvedRefs": [],
+      "scopeDefaulted": null,
+      "signed": {
+        "payload": "eyJhY3RvciI6ImtleTplZDI1NTE5OnNoYTI1Njo3YmU1NTBlMTQwZWU4MWQ3Y2E0NzQ2ZDNiOWIxNThlNzg5ZDQzNjI1Zjc0NThmMjg4NGZjMDZjODVlYzkyYzEyIiwiYXV0aG9yaXR5IjpbXSwiZGVyaXZlZEZyb20iOm51bGwsImV4cGlyZXMiOiIyMDI2LTA5LTIyVDA2OjA0OjQ5WiIsIm5vbmNlIjoiQWdNRUJRWUhDQWtLQ3d3TkRnOFFFUT09Iiwib3JpZ2luIjoic2hhMjU2OjMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMiLCJzcGVjQWRkcmVzcyI6InNoYTI1NjoxNzg4MjJlNjIxMDYzM2VlYzA5ZDU0MDFiMDg0NGE5ZDZhYmNkMGRlM2EzMTY2YWIwNWZjMzM0MjgyZWFlMjg5IiwidGFyZ2V0Ijp7Imdyb3VwIjoicmVjdXJzZS5yNWUuaW8iLCJraW5kIjoiQ29tbWFuZCIsIm5hbWUiOm51bGwsInZlcnNpb24iOiJ2MWFscGhhMSJ9fQ==",
+        "payloadType": "application/vnd.r5e.admission-request+json;v=1",
+        "publicKeys": [
+          {
+            "algorithm": "ed25519",
+            "bytes": "121L8BnLiuch4CCWg4dxAGvv6yEzAwfRv5HuIVIinfU=",
+            "keyid": "key:ed25519:sha256:7be550e140ee81d7ca4746d3b9b158e789d43625f7458f2884fc06c85ec92c12"
+          }
+        ],
+        "signatures": [
+          {
+            "keyid": "key:ed25519:sha256:7be550e140ee81d7ca4746d3b9b158e789d43625f7458f2884fc06c85ec92c12",
+            "sig": "+OIgKJQFMQnsF/3jIKTsTTo7jBFVNYkfFzZyssyvwb396vCgwm98jPr0SRX8XnCYAa5QSppISMC2weAIFIrkAw=="
+          }
+        ]
+      },
+      "signers": [
+        "key:ed25519:sha256:7be550e140ee81d7ca4746d3b9b158e789d43625f7458f2884fc06c85ec92c12"
+      ],
+      "spec": {
+        "commandId": "fixture-original",
+        "operation": "submit_task",
+        "payloadDigest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "target": "fixture-node"
+      },
+      "submittedTarget": {
+        "group": "recurse.r5e.io",
+        "kind": "Command",
+        "name": null,
+        "version": "v1alpha1"
+      },
+      "target": {
+        "group": "recurse.r5e.io",
+        "kind": "Command",
+        "name": null,
+        "version": "v1alpha1"
+      }
+    }
+  }
+}
