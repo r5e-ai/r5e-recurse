@@ -31,6 +31,10 @@ defmodule R5eRecurse.PolicyBaseTest do
   @root Path.expand("../..", __DIR__)
 
   setup do
+    setup_fixture()
+  end
+
+  def setup_fixture do
     previous =
       Map.new([:data_dir, :policy, :seed_kernel_policy], &{&1, Application.get_env(:r5e, &1)})
 
@@ -304,6 +308,7 @@ defmodule R5eRecurse.PolicyBaseTest do
           {"signer_reachability", "other"},
           {"authority_present", false},
           {"binding_valid", false},
+          {"task_scope_valid", false},
           {"node_acyclic", false},
           {"session_key", "other"},
           {"badge_subject", "other"},
@@ -415,7 +420,7 @@ defmodule R5eRecurse.PolicyBaseTest do
     end
   end
 
-  defp fixture do
+  def fixture do
     kinds =
       Path.wildcard(Path.join(@root, "priv/kinds/*.json"))
       |> Enum.map(&(File.read!(&1) |> Jason.decode!()))
@@ -451,27 +456,6 @@ defmodule R5eRecurse.PolicyBaseTest do
     operator_badge = credential("Badge", :node, operator, paths, nil, [])
     operator_authority = [endorsement["eventRef"], operator_badge["eventRef"]]
 
-    badge =
-      credential(
-        "Badge",
-        operator,
-        session,
-        paths,
-        operator_badge["eventRef"],
-        operator_authority
-      )
-
-    delegation =
-      credential(
-        "Endorsement",
-        operator,
-        session,
-        paths,
-        operator_badge["eventRef"],
-        operator_authority
-      )
-
-    authority = [badge["eventRef"], delegation["eventRef"]]
     source = object(File.read!(Path.join(@root, "priv/policy/base.cedar")), "text/plain")
     measurement = R5eRecurse.Policy.EngineBuild.measure()
 
@@ -523,15 +507,52 @@ defmodule R5eRecurse.PolicyBaseTest do
 
     {:ok, node} = admit(@group, @version, "Node", nil, node_spec, operator, operator_authority)
 
+    creation =
+      credential(
+        "Endorsement",
+        operator,
+        operator,
+        paths,
+        operator_badge["eventRef"],
+        operator_authority,
+        %{"taskId" => "task", "node" => resource("Node", node)}
+      )
+
+    task_authority = operator_authority ++ [creation["eventRef"]]
+
     task_spec = %{
       "id" => "task",
       "node" => ref(resource("Node", node)),
       "delegatedBy" => R5e.Request.key_id(operator),
-      "delegationRef" => ref(delegation["eventRef"]),
+      "delegationRef" => ref(creation["eventRef"]),
       "step" => "produce"
     }
 
-    {:ok, task} = admit(@group, @version, "Task", nil, task_spec, operator, operator_authority)
+    {:ok, task} = admit(@group, @version, "Task", nil, task_spec, operator, task_authority)
+
+    badge =
+      credential(
+        "Badge",
+        operator,
+        session,
+        paths,
+        operator_badge["eventRef"],
+        operator_authority,
+        %{"task" => task["eventRef"]}
+      )
+
+    delegation =
+      credential(
+        "Endorsement",
+        operator,
+        session,
+        paths,
+        operator_badge["eventRef"],
+        operator_authority,
+        %{"task" => task["eventRef"]}
+      )
+
+    authority = [badge["eventRef"], delegation["eventRef"]]
 
     context_spec =
       Map.merge(@labels, %{
@@ -573,6 +594,11 @@ defmodule R5eRecurse.PolicyBaseTest do
       })
 
     %{
+      paths: paths,
+      task: task,
+      task_spec: task_spec,
+      task_authority: task_authority,
+      creation: creation,
       operator: operator,
       operator_badge: operator_badge,
       operator_authority: operator_authority,
@@ -591,7 +617,7 @@ defmodule R5eRecurse.PolicyBaseTest do
     }
   end
 
-  defp credential(kind, issuer, subject, paths, parent, authority) do
+  def credential(kind, issuer, subject, paths, parent, authority, scope \\ nil) do
     spec = %{
       "subject" => R5e.Request.key_id(subject),
       "subjectKey" => %{
@@ -604,6 +630,7 @@ defmodule R5eRecurse.PolicyBaseTest do
       "notAfter" => "2035-01-01T00:00:00Z"
     }
 
+    spec = if scope, do: Map.put(spec, "scope", scope), else: spec
     spec = if parent, do: Map.put(spec, "parent", ref(parent)), else: spec
     spec = if kind == "Badge", do: Map.put(spec, "subjectKind", "agent"), else: spec
     keys = if kind == "Badge", do: [issuer, subject], else: [issuer]
@@ -622,7 +649,7 @@ defmodule R5eRecurse.PolicyBaseTest do
     receipt
   end
 
-  defp admit_binding(ctx, spec \\ nil, authority \\ nil),
+  def admit_binding(ctx, spec \\ nil, authority \\ nil),
     do:
       admit(
         @group,
@@ -634,7 +661,7 @@ defmodule R5eRecurse.PolicyBaseTest do
         authority || ctx.authority
       )
 
-  defp admit(g, v, k, n, s, key, authority) do
+  def admit(g, v, k, n, s, key, authority) do
     signed =
       R5e.TestHelpers.sign_request(%{
         keys: [key],
