@@ -1,0 +1,61 @@
+{
+  "group": "recurse.r5e.io",
+  "version": "v1alpha1",
+  "kind": "Command",
+  "substrate": "event",
+  "naming": {
+    "mode": "content"
+  },
+  "description": "The recorded actor submitted this Command under the cited authority; operational claims remain scoped to the recorded evidence.",
+  "schema": {
+    "properties": {
+      "commandId": {
+        "type": "string"
+      },
+      "operation": {
+        "type": "string",
+        "enum": [
+          "submit_task",
+          "start_session",
+          "cancel_session",
+          "record_decision",
+          "request_push",
+          "recover_attempt",
+          "select_lesson"
+        ]
+      },
+      "payloadDigest": {
+        "type": "string"
+      },
+      "target": {
+        "type": "string"
+      },
+      "expectedState": {
+        "type": "ref",
+        "ref": {
+          "event": [
+            "recurse.r5e.io/v1alpha1/LifecycleEvent"
+          ],
+          "outcome": "admitted"
+        }
+      }
+    },
+    "required": [
+      "commandId",
+      "operation",
+      "payloadDigest",
+      "target"
+    ],
+    "additionalProperties": false
+  },
+  "epistemicScope": {
+    "claims": [
+      "The recorded actor admitted these Command fields at this chain position under the resolved authority."
+    ],
+    "doesNotClaim": [
+      "That descriptive fields prove model authorship, identity beyond the signing key, or events outside the recorded path.",
+      "That schema acceptance proves application workflow constraints or external execution."
+    ]
+  },
+  "predicates": []
+}
