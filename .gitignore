@@ -2,3 +2,5 @@
 /deps/
 /.r5e/
 .DS_Store
+
+__pycache__/

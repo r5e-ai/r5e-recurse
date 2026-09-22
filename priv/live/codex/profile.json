@@ -1,0 +1,22 @@
+{
+  "client": "codex",
+  "version": "codex-cli 0.149.1",
+  "auth_mode": "chatgpt_subscription",
+  "argv": [
+    "codex",
+    "exec",
+    "--strict-config",
+    "--ephemeral",
+    "--ignore-rules",
+    "--skip-git-repo-check",
+    "--sandbox",
+    "read-only",
+    "--json",
+    "-o",
+    "/tmp/probe-result.txt"
+  ],
+  "config_files": [
+    "config.toml",
+    "models.json"
+  ]
+}

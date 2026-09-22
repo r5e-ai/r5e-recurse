@@ -1,0 +1,51 @@
+# Codex 0.149.1, subscription only; container has a fresh default user home.
+model = "gpt-5.5"
+model_provider = "r5e_subscription_probe"
+model_reasoning_effort = "low"
+model_catalog_json = "/probe/models.json"
+forced_login_method = "chatgpt"
+approval_policy = "never"
+sandbox_mode = "read-only"
+web_search = "disabled"
+project_doc_max_bytes = 0
+
+[model_providers.r5e_subscription_probe]
+name = "r5e subscription probe"
+base_url = "http://gateway:4443/backend-api/codex"
+wire_api = "responses"
+requires_openai_auth = true
+supports_websockets = false
+request_max_retries = 0
+stream_max_retries = 0
+stream_idle_timeout_ms = 60000
+http_headers = { Host = "chatgpt.com" }
+
+[tools.experimental_request_user_input]
+enabled = false
+
+[tools.update_plan]
+enabled = false
+
+[features]
+apps = false
+plugins = false
+hooks = false
+shell_tool = false
+shell_snapshot = false
+unified_exec = false
+view_image = false
+image_generation = false
+multi_agent = false
+multi_agent_v2 = false
+browser_use = false
+browser_use_external = false
+computer_use = false
+code_mode = false
+code_mode_host = false
+memories = false
+goals = false
+skill_search = false
+skill_mcp_dependency_install = false
+tool_suggest = false
+enable_request_compression = false
+unbounded_connection_retries = false
