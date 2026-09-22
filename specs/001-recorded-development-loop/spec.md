@@ -161,7 +161,7 @@ The operator or another authorized reader can follow a task from context through
 - **SC-004**: Cancellation and a crash after artifact creation are demonstrated independently. Restart preserves the artifact and starts zero unapproved replacement executions; uncertain actions remain visibly unresolved until a recorded decision.
 - **SC-005**: An allowed branch push and a refused protected-ref push show matching pre-act evidence and remote observations; the refused operation changes zero remote refs.
 - **SC-006**: A facade reader and an independent bundle-only reader reconstruct the same demonstrated lineage at one checkpoint; the latter makes no facade calls during reconstruction, then diffs canonical edges/source refs against the facade and detects an intentionally omitted edge. The available bundle passes the reference verifier under explicit reader settings, with all limitations retained.
-- **SC-007**: Every demonstrated managed binding/context has policy-validated custody/profile fields, with reads preserving their source references; zero private payloads or credentials are published without a separately recorded disclosure decision.
+- **SC-007**: Every demonstrated managed binding/context has policy-validated custody/profile/signerReachability fields, with reads preserving their source references; zero private payloads or credentials are published without a separately recorded disclosure decision.
 
 ## Assumptions
 
@@ -172,3 +172,7 @@ The operator or another authorized reader can follow a task from context through
 - Existing protocol admission, verification and content storage are reused. Necessary extension vocabulary and integration changes are part of this feature.
 - Public viewing and automated publication are optional later deliverables. Existing desktop conversations are not implicitly managed sessions.
 - These specification artifacts can be admitted and reviewed by the loop after it exists; their initial authorship is not retroactively represented as governed execution.
+
+## Accepted Phase 1 amendments (2026-09-21)
+
+R5E-245's amended policy-hosting ruling and sections 2–5 of the Phase 1 amendment are accepted design requirements. The [plan](plan.md#accepted-policy-hosting-contract-r5e-245) records the fixed Recurse → fold → kernel composition, Recurse-owned admitted policy, tracked optimistic facts, chain-based boot check and attributable receipts. Operator signing uses an externally held Ed25519 key through a bounded command argv protocol with local verification; hardware support requires actual compatibility evidence. The second reader is Python 3 standard library, with shared canonical-byte fixtures and explicit signature-verification limits. Scaffold paths and the opt-in deterministic performance fixture are specified in the plan. These amendments record acceptance, not implementation completion. R5E-244 dependency findings remain unresolved. Subject-equality stays in Cedar over validated kernel facts for milestone one, as explained in the plan.

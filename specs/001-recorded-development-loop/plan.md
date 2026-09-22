@@ -95,10 +95,14 @@ lib/r5e_recurse/
 lib/mix/tasks/recurse.ex
 priv/kinds/
 priv/policy/
+priv/live/
+priv/launcher/
 test/contract/
 test/execution/
 test/integration/
 test/fixtures/
+test/support/
+test/live/
 ```
 
 **Structure decision**: One application, pure lifecycle/domain functions and small execution/evidence boundaries. Framework integration is behind an adapter if needed later. Existing inspectable gateway/fold source remains in the enterprise source distribution; reusable signing/binding/admission implementation must ship in that public distribution or a public shared module, never solely in private deployment tooling. Enterprise-private material is limited to operator configuration, secrets and deployment wiring; session signing is integrated there rather than implementing a second model proxy inside Recurse. Kind declarations are new extension vocabulary admitted through the existing kernel, not changes silently made to existing public Kind definitions.
@@ -108,6 +112,18 @@ test/fixtures/
 [Research](research.md) records ten decisions and alternatives. The prior runtime had implemented useful lifecycle/session separation, Port streaming, context parts, GAN target lineage and message deduplication. It did not implement the required session signing, safe effect recovery, independent acceptance, real reflection or accepted lessons.
 
 Codex subscription configuration has an official supported proxy path, but the local assessment found no gateway on the documented listener and no selected ChatGPT upstream. Provisioning an isolated, explicitly selected test gateway is the first implementation integration step. Do not send a ChatGPT bearer to the shipped Anthropic fallback. Claude's live path and both refresh behaviors also require actual evidence. Neither documentation nor historical tests substitutes for these results.
+
+## Accepted policy hosting contract (R5E-245)
+
+The 2026-09-21 amended policy-hosting ruling replaces the gateway-bundle proposal. The deployment installs `R5eRecurse.Policy` in the admitting kernel process with `config :r5e, policy: R5eRecurse.Policy`. Composition is fixed in code: Recurse → `Recurse.Fold.Policy.Cedar` → `R5e.Policy.KernelCedar`. There is no second upstream configuration key. Non-Recurse admissions delegate unchanged; Recurse admissions require upstream allowance and Recurse allowance. Boot asserts this composition and refuses startup when an active Recurse PolicyBundle exists but the active policy is not this adapter. Enforcement is a chain fact, not an opt-in declaration flag or runtime HTTP preflight.
+
+Recurse owns `recurse.r5e.io/v1alpha1/PolicyBundle`, with `requiresAuthority: true`, admitted source bytes/digests and a pinned presentation contract. Its `governs` enumerates fully qualified Kind paths within the admitting authority's resolved `kinds`, never a group string, and excludes its own PolicyBundle Kind. PolicyBundle admission and supersession receive management validation plus upstream evaluation only; the bundle never decides its own management. Activation authority belongs to the operator. Bootstrap admits definitions, then the node Endorsement over the Recurse Kinds, operator Badge and Recurse bundle. This does not replace the gateway's workload bundle. The development chain is a house instrument under charter line 6.
+
+The adapter maps authenticated actors, resolved admitted Badge/Endorsement records and cited admitted resource specs into validated Cedar entities. Generic `R5e.Policy.Facts.resolve/1` belongs to kernel issue #3; no Recurse field names enter the kernel. Reads are optimistic. The kernel tracks every generation served, including multi-hop cited-spec reads, and `R5e.Commit` rechecks those under its append lock regardless of what the adapter reports. An adapter must not evade this tracking by reading the public store directly. Conflicting generation values for one resource produce `decision: "error"`, never last-write-wins merging.
+
+Every Recurse path that reaches policy authorization carries a Recurse receipt block, including upstream refusal: preserve nested `upstreamPolicy`, copy its decision and record "upstream refused; not evaluated here". Preserve engine/build, bundle address, matched rule IDs, replayable evaluation bytes, presentation/source identity, derived objects and all read generations. Missing or malformed presentation produces an attributable `error`, distinct from policy `deny`; the adapter catches evaluation exceptions so they do not drop the receipt. An admitted Recurse receipt without the Recurse block proves non-enforcement; schema or authority refusals before authorization need no Recurse evaluation. A kernel check that top-level allowance requires allowance in every nested `upstreamPolicy` is an adopted nice-to-have, not a claimed delivered guarantee.
+
+Acceptance submits every T018 negative case directly to the kernel HTTP API without the runtime, and covers upstream-deny/extension-allow, absent adapter, malformed labels, empty authority, subject mismatch, changed referenced generation, generation conflicts and raising evaluation. Declaration-only vocabulary and an adapter skeleton do not establish enforcement. For milestone one, subject-equality is enforced by Cedar over validated kernel facts. It compares actors and subjects across cited admissions and resolved authority, which the current structural schema alone does not establish. Keep these domain joins in the Recurse presentation and admitted bundle; adding generic constraint support later requires a separate proposal.
 
 ## Phase 1 — Design
 
@@ -133,6 +149,12 @@ Codex subscription configuration has an official supported proxy path, but the l
 | E — optional disclosure | Select intended public evidence only after local cycle; independent viewer may consume D. | Explicit disclosure selection, withheld-payload limitations, unchanged signed bytes. Public witness/root/anchoring remain milestone two. |
 
 Spec/plan are the initial candidate artifacts for later admission by the loop. That later admission records the actual event sequence; it does not backdate how these files were created.
+
+R5E-204 supplies `test/support`; A1 supplies `test/live` and `priv/live` profiles/probes. Generated live evidence is ignored; private deployment state stays in handbook/internal. Ordinary CI excludes live and `:perf` tests. Canonical integration and subscription evidence have explicit separate runs.
+
+The deterministic 10,000-event generator is `test/support/event_fixture.ex` (T103). Opt in to performance measurements with `:perf`. Time indexed page construction, excluding unavailable payload downloads, and retain the p95-under-one-second target. Each result records the fixture seed/chain shape, page query and size, cold or warm index/cache state, machine and exact toolchain. A1 probes and scaffold tests do not measure this target.
+
+ManagedRequest is owned by Recurse in `priv/kinds/managed-request.json`; the enterprise gateway integrates against that declaration. R5E-244 separately tracks unresolved dependency corrections after phase compression; this amendment does not accept or rewrite those edges.
 
 ## Validation and requirement coverage
 
