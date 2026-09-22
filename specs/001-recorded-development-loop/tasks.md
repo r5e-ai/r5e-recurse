@@ -35,6 +35,8 @@ Operational guardrails that every task inherits: never run anything against the 
 
 ---
 
+> **Compression (2026-09-21, operator decision):** work is dispatched and reviewed by *phase milestone* (nine chunks; Phases 1–3 are the first deliverable). Phase 8 collapsed 5→2 units; 9.1 deferred to milestone two. 36 active units.
+
 ## Phase 1: Setup (slices A1 and A2)
 
 **Purpose**: Establish the two real subscription paths through the gateway (A1, independent of runtime code) and the extension vocabulary, canonical client, command identity and pure reducers (A2) that every later phase builds on.
@@ -311,30 +313,27 @@ The managed binding registry, authenticated signer bridge client, ManagedRequest
 
 **Independent Test**: An independent reader reconstructs a completed task from the exported bundle alone, then compares canonical lineage with the documented facade response (spec US6).
 
-### 8.1 Snapshot-labelled read index
+### 8.1 Read index, loopback HTTP facade and read credentials
 
 - [ ] T102 [US6] Implement `lib/r5e_recurse/read/index.ex`: rebuildable in-memory projection from canonical events; ReadSnapshot (`origin`, `through_seq`, `checkpoint_ref`, `indexed_through_seq`, `index_version`, capture and disclosure scope) fixed at first read; when the index lags choose and report the older fully indexed checkpoint; retryable coverage error when none exists; snapshot metadata retained at least 24 hours; a rebuild serves an existing snapshot only when it reproduces version and coverage; orphan LlmCall labelled `not_dispatched` within the managed profile; custody/profile derived from source records; `source_event_refs` on every derived object
 - [ ] T103 [US6] Add `test/read/index_test.exs` and a 10,000-event fixture generator in `test/support/event_fixture.ex`: rebuild after index loss reproduces coverage; a deliberately omitted edge is detected by rebuild diff; lag reporting; `:perf`-tagged p95 page build under one second excluding payload downloads
 
-### 8.2 Loopback HTTP read facade (Plug/Bandit)
 
 - [ ] T104 [US6] Implement `lib/r5e_recurse/read/router.ex` and `lib/r5e_recurse/read/controllers/{tasks,sessions,events,artifacts,revisions,commands,evidence,snapshots}.ex` on a configurable loopback port (not 4000): all nine endpoints of read-api.md; envelope `api_version`, `data`, `coverage`, `links`; opaque cursor binding origin, snapshot, endpoint/query/filter, last ordering key and index version; `limit` default 50 maximum 200 with limit+1 exhaustion; `400 invalid_cursor`, `410 snapshot_expired`, `409 outside_snapshot`; `payload_status`; error envelope with `retryable`; URL-encoded opaque IDs never split on slashes; no secret in any error or link
 - [ ] T105 [US6] Implement `lib/r5e_recurse/read/content.ex` for `GET /v1/artifacts/{id}/content`: exact bytes with recorded media type and digest; `401/403` before `404`; `410` on recorded expiry; `503` on temporary source failure; never a modified original or a synthesized payload
 - [ ] T106 [US6] Add `test/read/router_test.exs`: page boundaries, tied projection sort keys, new chain events excluded from an open snapshot, cursor filter mismatch, snapshot expiry, withheld payload, resource reference resolving to the captured admission version rather than the live replacement, unknown revision returning no match without implying no work
 
-### 8.3 Read credentials and command-owner mapping
 
 - [ ] T107 [US6] Implement `lib/r5e_recurse/read/auth.ex` and `lib/mix/tasks/recurse.read_credential.ex` (`issue`, `revoke`): server-side credential records mapping an opaque credential ID to one principal key and an explicit set of permitted command-owner keys/scopes; `GET /v1/commands/{id}` resolves `(ownerKey, commandId)` from that mapping with an optional owner selector restricted to the allowed set; credentials never emitted in evidence, links or cursors
 - [ ] T108 [US6] Add `test/read/auth_test.exs`: identical command IDs owned by different keys resolve separately; revoked and expired credentials denied; forged owner selector denied; a decision Endorsement alone confers no read access; authorization precedes descriptive errors
 
-### 8.4 Inspector and independent readers
+### 8.2 Independent readers and coherent canonical export
 
 - [ ] T109 [US6] Implement `lib/mix/tasks/recurse.inspect.ex`: follow a task through context, artifact, review, decision, reflection and lesson use via the facade, printing canonical refs and coverage for each hop
 - [ ] T110 [P] [US6] Write `tools/independent_reader/` (non-Elixir, standard-library only, for example Python 3): reconstruct task/review/lesson lineage from an exported canonical bundle with no facade calls, no database and no process memory; emit edges and source event refs; a `diff` mode compares with facade JSON at the same checkpoint and reports omitted or mislabeled edges
 - [ ] T111 [P] [US6] Write `tools/http_contract/` (non-Elixir): HTTP contract test of read-api.md envelope, pagination, cursor errors, expiry and payload status against a running facade
 - [ ] T112 [US6] Add `test/integration/two_reader_test.exs` orchestrating T109 to T111 against a fixture chain with an injected index omission and requiring the mismatch to be detected (SC-006, first half); write quickstart.md section 7 read commands
 
-### 8.5 Coherent canonical export and reference verification
 
 - [ ] T113 [US6] Implement `lib/r5e_recurse/export.ex` and `lib/mix/tasks/recurse.export.ex`: quiesce every writer to the selected chain (runtime mutation gate closed, gateway confirmed idle), capture one checkpoint, export the bundle through the kernel, verify unchanged head across export, run the reference verifier with explicit reader pins and `house` posture, retain the full verifier output and every not-checked limitation, refuse the `coherent` label otherwise; surface bundle metadata through `GET /v1/snapshots/{id}`
 - [ ] T114 [US6] Add `test/integration/export_test.exs`: head change during export discards the candidate; quiescence not established refuses export; verifier limitations preserved unedited; the available bundle passes the verifier under the explicit settings (SC-006, second half)
@@ -347,7 +346,7 @@ The managed binding registry, authenticated signer bridge client, ManagedRequest
 
 **Purpose**: Optional disclosure selection, the end-to-end acceptance run that produces the evidence package, and the regression sweep that proves every named negative case has a test.
 
-### 9.1 [E] Optional disclosure selection
+### 9.1 [E] Optional disclosure selection — DEFERRED to milestone two (not part of milestone-one acceptance)
 
 - [ ] T115 Implement `lib/r5e_recurse/disclosure.ex`: an explicit disclosure Decision selects the public evidence subset; derived public bundle metadata identifies withheld payloads and their verification consequences; signed bytes are never edited; everything is private by default
 - [ ] T116 Add `test/disclosure_test.exs`: nothing disclosed without a recorded disclosure decision; a subset is never labelled a full export; disclosed signed bytes are byte-identical to the originals; zero credentials or private payloads in the public subset (SC-007)
