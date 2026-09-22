@@ -154,7 +154,7 @@ R5E-204 supplies `test/support`; A1 supplies `test/live` and `priv/live` profile
 
 The deterministic 10,000-event generator is `test/support/event_fixture.ex` (T103). Opt in to performance measurements with `:perf`. Time indexed page construction, excluding unavailable payload downloads, and retain the p95-under-one-second target. Each result records the fixture seed/chain shape, page query and size, cold or warm index/cache state, machine and exact toolchain. A1 probes and scaffold tests do not measure this target.
 
-ManagedRequest is owned by Recurse in `priv/kinds/managed-request.json`; the enterprise gateway integrates against that declaration. R5E-244 separately tracks unresolved dependency corrections after phase compression; this amendment does not accept or rewrite those edges.
+ManagedRequest is owned by Recurse in `priv/kinds/managed-request.json`; the enterprise gateway integrates against that declaration. R5E-244 reconciles the dependency table and graph in tasks.md with the operator-approved phase compression, retaining 36 active units and separating command stubs from later executable lifecycle operations.
 
 ## Validation and requirement coverage
 

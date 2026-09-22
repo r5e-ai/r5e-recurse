@@ -6,7 +6,7 @@
 
 **Tests**: The specification and contracts name fixtures and negative tests explicitly (FR-010 marker fixture, contract "Tests" sections, plan regression list, quickstart "Review-derived negative cases"). Test tasks are therefore included and sit beside their implementation inside the same sub-header.
 
-**Organization**: Phase 1 is plan slices A1 and A2; Phase 2 is slice B1; Phases 3 to 8 map one user story each in spec priority order (US1 = B2, US2 = B3, US3 and US4 = C, US5 = P, US6 = D); Phase 9 is slice E plus cross-cutting acceptance. Every `###` sub-header is one cohesive unit of work that one engineer closes with one merge request; the Linear sync collapses each sub-header into one issue.
+**Organization**: Phase 1 is plan slices A1 and A2; Phase 2 is slice B1; Phases 3 to 8 map one user story each in spec priority order (US1 = B2, US2 = B3, US3 and US4 = C, US5 = P, US6 = D); Phase 9 is cross-cutting acceptance; slice E (9.1) is retained as deferred milestone-two work. Every `###` sub-header is one cohesive unit of work that one engineer closes with one merge request; the Linear sync collapses each sub-header into one issue.
 
 ## Format: `[ID] [P?] [Story] Description`
 
@@ -342,9 +342,9 @@ The managed binding registry, authenticated signer bridge client, ManagedRequest
 
 ---
 
-## Phase 9: Polish and cross-cutting concerns (slice E and acceptance)
+## Phase 9: Polish and cross-cutting acceptance
 
-**Purpose**: Optional disclosure selection, the end-to-end acceptance run that produces the evidence package, and the regression sweep that proves every named negative case has a test.
+**Purpose**: The end-to-end acceptance run produces the evidence package, and the regression sweep proves every named milestone-one negative case has a test. Optional disclosure selection is retained below for milestone two and does not block this acceptance.
 
 ### 9.1 [E] Optional disclosure selection — DEFERRED to milestone two (not part of milestone-one acceptance)
 
@@ -363,23 +363,25 @@ The managed binding registry, authenticated signer bridge client, ManagedRequest
 
 ## Dependencies and execution order
 
+R5E-244 reconciles this execution order with the operator-approved 36 active units. Phase 8 has only 8.1 (T102–T108, R5E-236) and 8.2 (T109–T114, R5E-239); cancelled units are folded into these. T115–T116 remain deferred under 9.1 (R5E-241). Task IDs and unchecked boxes retain their original meaning.
+
 **Phase dependencies**
 
-- **Phase 1 (Setup, A1 + A2)**: 1.1 first; 1.2 to 1.4 (A1) are independent of runtime code and run in parallel with 1.5 to 1.8 (A2). 1.3 and 1.4 depend on 1.2. 1.6 to 1.8 depend on 1.1 and 1.5.
+- **Phase 1 (Setup, A1 + A2)**: 1.1 first; 1.2 to 1.4 (A1) are independent of runtime code and run in parallel with 1.5 to 1.8 (A2). 1.3 and 1.4 depend on 1.2. 1.6 and 1.8 depend on 1.1 and 1.5; 1.7 command-envelope, signer and stub/contract work depends on 1.6 and may proceed alongside 1.8. Executable lifecycle operations in later phases require both 1.7 and 1.8.
 - **Phase 2 (Foundational, B1)**: depends on Phase 1 A2 (1.5 to 1.8). 2.1 -> 2.2 -> 2.3 -> 2.4 -> 2.5 -> 2.6 is the internal order (2.4 needs 2.3 for registered span/binding resolution; 2.5 needs 2.4; 2.6 needs 2.4). 2.7 depends on 2.4 to 2.6 and on public r5e-enterprise issue #8; it may stay blocked while story phases proceed against the fake adapter.
 - **Phase 3 (US1, B2)**: depends on Phase 2 (2.1 to 2.6). 3.1 and 3.2 in parallel; 3.3 and 3.4 in parallel after 3.1; 3.5 after 3.2 to 3.4; 3.6 after 3.5. Live SC-001 evidence in 3.5 additionally depends on 1.3, 1.4 and 2.7.
 - **Phase 4 (US2, B3)**: depends on Phase 3 (3.1, 3.2, 3.6). 4.1 -> 4.2 -> 4.3.
 - **Phase 5 (US3, C)**: depends on 3.3 to 3.6 and 2.2 to 2.4 (reviewer key, Badge, Review signing path). 5.1 -> 5.2 -> 5.3.
 - **Phase 6 (US4, C)**: depends on Phase 5 (Decision path for lesson acceptance) and 4.2 (interrupted reflection). 6.1 -> 6.2 -> 6.3.
 - **Phase 7 (US5, P)**: depends on 1.7, 2.2, 2.3, 4.2 (reconciliation) and 5.3 (accepting Decision). Can develop alongside Phase 6.
-- **Phase 8 (US6, D)**: 8.1 and 8.2 may begin after Phase 1 A2 against fixture events; 8.3 after 1.7; 8.4 and 8.5 extend through Phases 3 to 7 and complete only after 7.3.
-- **Phase 9**: 9.1 after 8.5; 9.2 after every other sub-header.
+- **Phase 8 (US6, D)**: 8.1 (R5E-236: index, facade and credentials) may begin after Phase 1 A2 against 1.8 fixture events and includes the command-owner mapping dependency on 1.7. 8.2 (R5E-239: independent readers and coherent export) may develop against those fixtures and the 8.1 contract; its integrated acceptance requires 8.1, 6.3 and 7.3. Both units extend through Phases 3 to 7; 8.1 completes after 7.3.
+- **Phase 9**: 9.2 follows all active units in Phases 1 to 8, including the live gates below. Deferred 9.1 is not a milestone-one prerequisite; its later disclosure work consumes 8.2 export metadata and the 5.3 Decision path.
 
 **Sub-header dependency graph**
 
 ```text
-1.1 ─┬─> 1.5 ─┬─> 1.6 ─> 1.7 ─> 1.8
-     │        └─> 8.1 ─> 8.2 ─> 8.3 (fixture-driven start; completes after 7.3)
+1.1 ─┬─> 1.5 ─┬─> 1.6 ─> 1.7 (command contracts and operation stubs)
+     │        └─> 1.8 (pure reducer; parallel with command work)
      └─> 1.2 ─┬─> 1.3
               └─> 1.4
 1.5, 1.6, 1.7, 1.8 ─> 2.1 ─> 2.2 ─> 2.3 ─> 2.4 ─> 2.5 ─> 2.6 ─> 2.7 [blocked on r5e-enterprise #8]
@@ -390,7 +392,10 @@ The managed binding registry, authenticated signer bridge client, ManagedRequest
 3.6, 2.4 ─> 5.1 ─> 5.2 ─> 5.3
 5.3, 4.2 ─> 6.1 ─> 6.2 ─> 6.3
 5.3, 4.2, 1.7 ─> 7.1 ─> 7.2 ─> 7.3
-7.3, 6.3, 8.3 ─> 8.4 ─> 8.5 ─> 9.1 ─> 9.2
+Phase 1 A2 ─> 8.1 ─> 8.2 (fixture/contract development may start early)
+7.3 ─> 8.1 completion; 7.3, 6.3, 8.1 ─> 8.2 completion
+all active units in Phases 1..8 ─> 9.2
+9.1 is deferred to milestone two; no milestone-one unit depends on it
 ```
 
 **User story completion order**
@@ -400,17 +405,17 @@ US1 -> US2 -> US3 -> US4; US5 in parallel with US4 once US3 and US2 are done; US
 **Within each sub-header**
 
 - Implementation and its tests land in the same merge request; the merge request is not complete while any named negative case in that sub-header lacks a test.
-- Kinds and policy before reducers; reducers before commands; commands before adapters and endpoints.
+- Kinds and policy precede reducer fixtures and canonical-client integration. Command envelopes, signing and operation stubs (1.7) may develop alongside the pure reducer (1.8); implementing executable lifecycle operations later requires both. Phase 1 command stubs do not establish execution acceptance.
 - A `:live` test that cannot run records its precise blocker; it is never replaced by a passing fake and never deleted.
 
 ---
 
 ## Parallel opportunities
 
-- Phase 1: 1.2 to 1.4 (A1, no runtime code) run alongside 1.5 to 1.8 (A2). T015 and T016 are parallel within 1.5.
+- Phase 1: 1.2 to 1.4 (A1, no runtime code) run alongside 1.5 to 1.8 (A2). T015 and T016 are parallel within 1.5; 1.7 command contracts/stubs and 1.8 reducer work may overlap once their prerequisites above are met.
 - Phase 3: 3.1 and 3.2 in parallel; 3.3 and 3.4 in parallel; T064 and T065 (the two adapters) in parallel.
 - Phase 6 and Phase 7 run in parallel once 5.3 and 4.2 are merged.
-- Phase 8: 8.1 and 8.2 begin against fixture events as soon as 1.8 exists; T110 and T111 (non-Elixir readers) in parallel.
+- Phase 8: 8.1 starts after Phase 1 A2 using 1.8 fixture events; 8.2 reader/export work may overlap against those fixtures and the 8.1 contract, with integrated acceptance after 8.1, 6.3 and 7.3; T110 and T111 (non-Elixir readers) in parallel.
 - 2.7 (enterprise integration) is tracked separately and does not block fake-adapter development of Phases 3 to 8.
 
 **Parallel example: Phase 3 (US1)**
@@ -443,7 +448,7 @@ then one engineer: 3.6 Task submission, launch pipeline, artifact capture and co
 2. Add US3 (review and decision), then US4 (reflection and lessons) and validate SC-003.
 3. Add US5 (managed push) in parallel with US4 and validate SC-005.
 4. Complete US6 (reads, two readers, coherent export) and validate SC-006.
-5. Phase 9: optional disclosure, the end-to-end acceptance run for SC-002 and SC-007, and the regression sweep.
+5. Phase 9: the end-to-end acceptance run for SC-002 and SC-007, and the regression sweep. Optional disclosure (9.1) remains deferred to milestone two.
 
 **Live gates that are never reduced**
 
