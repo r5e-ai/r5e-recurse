@@ -38,6 +38,11 @@ defmodule R5eRecurse.DroppingProxy do
       :httpc.request(method, request, [autoredirect: false, autoretry: 0], body_format: :binary)
 
     case mode do
+      :post_retry_after ->
+        if method == :post,
+          do: Plug.Conn.send_resp(conn, 503, "lost acknowledgement"),
+          else: Plug.Conn.send_resp(conn, status, response)
+
       :drop ->
         # Upstream has replied (and thus committed) before this process exits.
         Process.exit(self(), :kill)
