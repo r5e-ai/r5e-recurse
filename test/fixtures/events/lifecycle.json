@@ -1,0 +1,306 @@
+[
+  {
+    "eventRef": {
+      "$ref": "e:task"
+    },
+    "seq": 1,
+    "target": {
+      "group": "recurse.r5e.io",
+      "version": "v1alpha1",
+      "kind": "Task",
+      "name": "task-1"
+    },
+    "actor": {
+      "id": "operator"
+    },
+    "spec": {
+      "id": "task-1",
+      "node": {
+        "$ref": "e:node"
+      },
+      "delegatedBy": "operator",
+      "delegationRef": {
+        "$ref": "e:delegation"
+      },
+      "step": "produce"
+    }
+  },
+  {
+    "eventRef": {
+      "$ref": "e:prepare"
+    },
+    "seq": 2,
+    "target": {
+      "group": "recurse.r5e.io",
+      "version": "v1alpha1",
+      "kind": "LifecycleEvent",
+      "name": "prepare"
+    },
+    "actor": {
+      "id": "runtime"
+    },
+    "spec": {
+      "task": {
+        "$ref": "e:task"
+      },
+      "commandId": "start-1",
+      "generation": {
+        "bootId": "boot-1",
+        "runId": "run-1"
+      },
+      "transition": "preparing",
+      "observationSource": "runtime"
+    }
+  },
+  {
+    "eventRef": {
+      "$ref": "e:binding"
+    },
+    "seq": 3,
+    "target": {
+      "group": "recurse.r5e.io",
+      "version": "v1alpha1",
+      "kind": "SessionBinding",
+      "name": "binding"
+    },
+    "actor": {
+      "id": "session-key"
+    },
+    "spec": {
+      "task": {
+        "$ref": "e:task"
+      },
+      "generation": {
+        "bootId": "boot-1",
+        "runId": "run-1"
+      },
+      "actorType": "agent",
+      "provider": "claude",
+      "agentSession": {
+        "$ref": "e:span"
+      },
+      "sessionKey": "session-key",
+      "agentSessionAdmission": {
+        "$ref": "e:span-admission"
+      },
+      "badge": {
+        "$ref": "e:badge"
+      },
+      "delegation": {
+        "$ref": "e:session-delegation"
+      },
+      "role": "producer",
+      "model": "fixture-model",
+      "harness": "fixture",
+      "harnessVersion": "1",
+      "contextManifest": {
+        "$ref": "e:context"
+      },
+      "workspace": {
+        "description": "synthetic fixture",
+        "digest": "fixture-digest"
+      },
+      "custody": "runtime-held",
+      "profile": "cooperative-local",
+      "signerReachability": "same-user-cooperative-limit"
+    }
+  },
+  {
+    "eventRef": {
+      "$ref": "e:ready"
+    },
+    "seq": 4,
+    "target": {
+      "group": "recurse.r5e.io",
+      "version": "v1alpha1",
+      "kind": "LifecycleEvent",
+      "name": "ready"
+    },
+    "actor": {
+      "id": "runtime"
+    },
+    "spec": {
+      "task": {
+        "$ref": "e:task"
+      },
+      "commandId": "start-1",
+      "sessionBinding": {
+        "$ref": "e:binding"
+      },
+      "generation": {
+        "bootId": "boot-1",
+        "runId": "run-1"
+      },
+      "transition": "ready",
+      "priorLifecycle": {
+        "$ref": "e:prepare"
+      },
+      "observationSource": "runtime"
+    }
+  },
+  {
+    "eventRef": {
+      "$ref": "e:running"
+    },
+    "seq": 5,
+    "target": {
+      "group": "recurse.r5e.io",
+      "version": "v1alpha1",
+      "kind": "LifecycleEvent",
+      "name": "running"
+    },
+    "actor": {
+      "id": "runtime"
+    },
+    "spec": {
+      "task": {
+        "$ref": "e:task"
+      },
+      "commandId": "start-1",
+      "sessionBinding": {
+        "$ref": "e:binding"
+      },
+      "generation": {
+        "bootId": "boot-1",
+        "runId": "run-1"
+      },
+      "transition": "running",
+      "priorLifecycle": {
+        "$ref": "e:ready"
+      },
+      "observationSource": "dispatch_observed"
+    }
+  },
+  {
+    "eventRef": {
+      "$ref": "e:work"
+    },
+    "seq": 6,
+    "target": {
+      "group": "recurse.r5e.io",
+      "version": "v1alpha1",
+      "kind": "Artifact",
+      "name": "work"
+    },
+    "actor": {
+      "id": "session-key"
+    },
+    "spec": {
+      "type": "work",
+      "sessionBinding": {
+        "$ref": "e:binding"
+      },
+      "content": {
+        "$ref": "cas:work"
+      },
+      "mediaType": "text/plain",
+      "completeness": "complete",
+      "sources": []
+    }
+  },
+  {
+    "eventRef": {
+      "$ref": "e:reflecting"
+    },
+    "seq": 7,
+    "target": {
+      "group": "recurse.r5e.io",
+      "version": "v1alpha1",
+      "kind": "LifecycleEvent",
+      "name": "reflecting"
+    },
+    "actor": {
+      "id": "runtime"
+    },
+    "spec": {
+      "task": {
+        "$ref": "e:task"
+      },
+      "commandId": "finish-1",
+      "sessionBinding": {
+        "$ref": "e:binding"
+      },
+      "generation": {
+        "bootId": "boot-1",
+        "runId": "run-1"
+      },
+      "transition": "reflecting",
+      "priorLifecycle": {
+        "$ref": "e:running"
+      },
+      "observationSource": "runtime"
+    }
+  },
+  {
+    "eventRef": {
+      "$ref": "e:reflection"
+    },
+    "seq": 8,
+    "target": {
+      "group": "recurse.r5e.io",
+      "version": "v1alpha1",
+      "kind": "Artifact",
+      "name": "reflection"
+    },
+    "actor": {
+      "id": "session-key"
+    },
+    "spec": {
+      "type": "reflection",
+      "sessionBinding": {
+        "$ref": "e:binding"
+      },
+      "content": {
+        "$ref": "cas:reflection"
+      },
+      "mediaType": "text/plain",
+      "completeness": "complete",
+      "sources": [
+        {
+          "$ref": "e:work"
+        }
+      ]
+    }
+  },
+  {
+    "eventRef": {
+      "$ref": "e:completed"
+    },
+    "seq": 9,
+    "target": {
+      "group": "recurse.r5e.io",
+      "version": "v1alpha1",
+      "kind": "LifecycleEvent",
+      "name": "completed"
+    },
+    "actor": {
+      "id": "runtime"
+    },
+    "spec": {
+      "task": {
+        "$ref": "e:task"
+      },
+      "commandId": "finish-1",
+      "sessionBinding": {
+        "$ref": "e:binding"
+      },
+      "generation": {
+        "bootId": "boot-1",
+        "runId": "run-1"
+      },
+      "transition": "completed",
+      "priorLifecycle": {
+        "$ref": "e:reflecting"
+      },
+      "outputs": [
+        {
+          "$ref": "e:work"
+        },
+        {
+          "$ref": "e:reflection"
+        }
+      ],
+      "observationSource": "runtime"
+    }
+  }
+]
