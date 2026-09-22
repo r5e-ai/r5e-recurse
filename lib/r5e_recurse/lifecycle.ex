@@ -218,7 +218,8 @@ defmodule R5eRecurse.Lifecycle do
 
   defp step_artifact?(_, _, _), do: false
 
-  defp reused_session?(state, attempt, binding_ref) do
+  @doc "Checks retry session freshness for a recorded binding, including before lifecycle attachment."
+  def reused_session?(state, attempt, binding_ref) do
     earlier = state.attempts[ref(attempt.task["spec"]["earlierTask"])]
     old = if earlier, do: get(state, earlier.binding)
     current = get(state, binding_ref)
