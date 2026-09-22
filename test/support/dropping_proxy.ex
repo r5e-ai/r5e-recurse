@@ -47,6 +47,18 @@ defmodule R5eRecurse.DroppingProxy do
         |> Plug.Conn.put_resp_header("retry-after", "0")
         |> Plug.Conn.send_resp(503, "unavailable")
 
+      :bad_status ->
+        Plug.Conn.send_resp(conn, 400, "response replaced after admission")
+
+      :alter_event ->
+        changed =
+          Jason.decode!(response)
+          |> Map.update!("events", fn events ->
+            List.update_at(events, -1, &Map.put(&1, "ts", "altered"))
+          end)
+
+        Plug.Conn.send_resp(conn, status, Jason.encode!(changed))
+
       :corrupt ->
         Plug.Conn.send_resp(conn, status, response <> "corruption")
     end

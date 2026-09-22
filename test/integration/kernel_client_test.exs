@@ -2,6 +2,8 @@ defmodule R5eRecurse.KernelClientTest do
   use ExUnit.Case, async: false
   alias R5eRecurse.{KernelClient, IsolatedKernel, DroppingProxy}
 
+  @moduletag skip: is_nil(System.get_env("R5E_TEST_KERNEL_IMAGE"))
+
   setup_all do
     kernel = IsolatedKernel.start!()
     client = KernelClient.new(kernel.url)
@@ -51,6 +53,11 @@ defmodule R5eRecurse.KernelClientTest do
     assert {:ok, %{spec: ^spec, event: event}} =
              KernelClient.resource_at_admission(ctx.client, receipt["eventRef"], recorded_target)
 
+    tampered = KernelClient.new(DroppingProxy.start!(ctx.kernel.url, :alter_event))
+
+    assert {:error, :admission_mismatch} =
+             KernelClient.resource_at_admission(tampered, receipt["eventRef"], recorded_target)
+
     assert event["seq"] == receipt["seq"]
     assert {:ok, events} = KernelClient.events_from(ctx.client, receipt["seq"])
     assert Enum.all?(events, &(&1["seq"] >= receipt["seq"]))
@@ -83,6 +90,20 @@ defmodule R5eRecurse.KernelClientTest do
     proxy = KernelClient.new(DroppingProxy.start!(ctx.kernel.url, :retry_after))
 
     assert {:outcome_unknown, {:http_status, 503}} =
+             KernelClient.submit(proxy, target, envelope, spec)
+
+    assert {:ok, [event]} = KernelClient.events_from(ctx.client, List.last(before)["seq"] + 1)
+    assert event["kind"] == "admission.granted"
+  end
+
+  test "an HTTP error after a committed write does not imply no admission", ctx do
+    target = target("KindDefinition")
+    spec = kind("BadStatus")
+    envelope = sign(ctx, target, spec)
+    {:ok, before} = KernelClient.events_from(ctx.client, 1)
+    proxy = KernelClient.new(DroppingProxy.start!(ctx.kernel.url, :bad_status))
+
+    assert {:outcome_unknown, {:http_status, 400}} =
              KernelClient.submit(proxy, target, envelope, spec)
 
     assert {:ok, [event]} = KernelClient.events_from(ctx.client, List.last(before)["seq"] + 1)

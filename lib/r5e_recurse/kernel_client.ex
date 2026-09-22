@@ -118,6 +118,7 @@ defmodule R5eRecurse.KernelClient do
   def resource_at_admission(client, event_ref, target) do
     with {:ok, events} <- events_from(client, 1),
          event when not is_nil(event) <- Enum.find(events, &("event:" <> &1["hash"] == event_ref)),
+         true <- RecurseVerify.Canonical.address(Map.delete(event, "hash")) == event["hash"],
          "admission.granted" <- event["kind"],
          {:ok, bytes} <- get_cas(client, event["payload"]),
          {:ok, %{"outcome" => "admitted", "target" => ^target, "spec" => spec} = payload} <-
@@ -201,7 +202,14 @@ defmodule R5eRecurse.KernelClient do
              timeout: client.timeout,
              connect_timeout: client.timeout,
              autoredirect: false,
-             autoretry: 0
+             autoretry: 0,
+             ssl: [
+               verify: :verify_peer,
+               cacerts: :public_key.cacerts_get(),
+               customize_hostname_check: [
+                 match_fun: :public_key.pkix_verify_hostname_match_fun(:https)
+               ]
+             ]
            ],
            body_format: :binary
          ) do
@@ -213,9 +221,6 @@ defmodule R5eRecurse.KernelClient do
 
   defp write_error({:transport_failure, :connection_failed} = error), do: error
   defp write_error({:transport_failure, _}), do: {:outcome_unknown, :connection_lost}
-
-  defp write_error({:ok, status, _}) when status in [400, 404, 413],
-    do: {:transport_failure, {:http_status, status}}
 
   defp write_error({:ok, status, _}), do: {:outcome_unknown, {:http_status, status}}
   defp read_error({:transport_failure, _} = error), do: error
