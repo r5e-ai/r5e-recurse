@@ -153,4 +153,29 @@ defmodule R5eRecurse.BootGateTest do
     assert ^uncertain = Boot.reconcile(gate)
     refute Boot.mutation_allowed?(gate)
   end
+
+  test "recorded recovery denials and conflicts retain details and keep the gate closed" do
+    for result <- [
+          {:denied, %{"eventRef" => "event:sha256:" <> String.duplicate("a", 64)}},
+          {:conflict, %{operation_id: "recovery", reason: :candidate_changed}}
+        ] do
+      boundary = %{interrupted: fn -> {:ok, []} end, admit: fn _, _ -> result end}
+      {:ok, gate} = Boot.start_link(boundary: boundary)
+      assert :ok = Boot.reconcile(gate)
+      assert ^result = Boot.recover(gate, :observation, %{})
+      refute Boot.mutation_allowed?(gate)
+      GenServer.stop(gate)
+
+      boundary =
+        Map.merge(boundary, %{
+          interrupted: fn -> {:ok, [%{badge: "b", issuer: "i"}]} end,
+          reconcile: fn binding -> {:ok, binding} end
+        })
+
+      {:ok, gate} = Boot.start_link(boundary: boundary)
+      assert ^result = Boot.reconcile(gate)
+      refute Boot.mutation_allowed?(gate)
+      GenServer.stop(gate)
+    end
+  end
 end

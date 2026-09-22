@@ -1,6 +1,6 @@
 defmodule R5eRecurse.RecoveryAdmissionTest do
   use ExUnit.Case, async: false
-  alias R5eRecurse.{Boot, KernelClient, IsolatedKernel, DroppingProxy}
+  alias R5eRecurse.{Boot, KernelClient, IsolatedKernel, DroppingProxy, NonceJournal}
   alias R5eRecurse.Boot.Admission
   @moduletag skip: is_nil(System.get_env("R5E_TEST_KERNEL_IMAGE"))
 
@@ -60,7 +60,7 @@ defmodule R5eRecurse.RecoveryAdmissionTest do
       badge: badge["eventRef"],
       issuer: issuer,
       subject: subject,
-      boundary: Admission.new(client, ctx.origin, signer),
+      boundary: boundary(Map.put(ctx, :signer, signer), client),
       signer: signer
     })
   end
@@ -72,6 +72,7 @@ defmodule R5eRecurse.RecoveryAdmissionTest do
     assert {:ok, receipt} = Boot.recover(boot, :revocation, candidate)
     assert receipt.badge == ctx.badge
     assert receipt.issuer == ctx.issuer
+    assert {:ok, ^receipt} = Boot.recover(boot, :revocation, candidate)
     assert {:ok, records} = R5eRecurse.Commands.KernelStore.history(ctx.client)
     record = Enum.find(records, &("event:" <> &1.event["hash"] == receipt.event_ref))
     assert record.payload["target"]["kind"] == "Revocation"
@@ -89,7 +90,7 @@ defmodule R5eRecurse.RecoveryAdmissionTest do
 
     {:ok, before} = KernelClient.events_from(ctx.client, 1)
     proxy = KernelClient.new(DroppingProxy.start!(ctx.kernel.url, :post_retry_after))
-    boundary = Admission.new(proxy, ctx.origin, ctx.signer)
+    boundary = boundary(ctx, proxy)
 
     assert {:outcome_unknown, _} =
              Admission.admit(boundary, :revocation, Map.take(ctx, [:badge, :issuer]))
@@ -178,6 +179,32 @@ defmodule R5eRecurse.RecoveryAdmissionTest do
     {:ok, gate} = Boot.start_link(boundary: boundary)
     assert :ok = Boot.reconcile(gate)
     assert Boot.mutation_allowed?(gate)
+
+    {:ok, recorded} = KernelClient.events_from(ctx.client, 1)
+    GenServer.stop(ctx.boundary.journal)
+    parent = self()
+
+    marker = fn _, _, _, _ ->
+      send(parent, :unexpected_observation_signature)
+      {:error, :unavailable}
+    end
+
+    recovered =
+      boundary(%{ctx | signer: marker}, ctx.client,
+        directory: ctx.boundary.test_directory,
+        boot: "observation-recovery"
+      )
+
+    assert {:ok, _} = Admission.admit(recovered, :observation, observation)
+
+    assert {:conflict, _} =
+             Admission.admit(recovered, :observation, %{
+               observation
+               | spec: Map.put(observation.spec, "result", "succeeded")
+             })
+
+    refute_receive :unexpected_observation_signature
+    assert {:ok, ^recorded} = KernelClient.events_from(ctx.client, 1)
     {:ok, records} = R5eRecurse.Commands.KernelStore.history(ctx.client)
 
     assert Enum.any?(
@@ -194,7 +221,7 @@ defmodule R5eRecurse.RecoveryAdmissionTest do
     proxy =
       KernelClient.new(DroppingProxy.start!(ctx.kernel.url, {:fail_history_after_post, state}))
 
-    boundary = Admission.new(proxy, ctx.origin, ctx.signer)
+    boundary = boundary(ctx, proxy)
     {:ok, before} = KernelClient.events_from(ctx.client, 1)
 
     assert {:outcome_unknown, %{event_ref: ref, reason: :canonical_confirmation_unavailable}} =
@@ -203,6 +230,124 @@ defmodule R5eRecurse.RecoveryAdmissionTest do
     assert {:ok, [event]} = KernelClient.events_from(ctx.client, List.last(before)["seq"] + 1)
     assert ref == "event:" <> event["hash"]
     assert event["kind"] == "admission.granted"
+  end
+
+  test "lost acknowledgement recovers the same revocation across a new boot without signing",
+       ctx do
+    proxy = KernelClient.new(DroppingProxy.start!(ctx.kernel.url, :post_retry_after))
+    old = boundary(ctx, proxy)
+    candidate = Map.take(ctx, [:badge, :issuer])
+    assert {:outcome_unknown, _} = Admission.admit(old, :revocation, candidate)
+    {:ok, after_write} = KernelClient.events_from(ctx.client, 1)
+    GenServer.stop(old.journal)
+    parent = self()
+
+    marker = fn _, _, _, _ ->
+      send(parent, :unexpected_recovery_signature)
+      {:error, :unavailable}
+    end
+
+    next =
+      boundary(%{ctx | signer: marker}, ctx.client,
+        directory: old.test_directory,
+        boot: "new-boot"
+      )
+
+    assert {:ok, receipt} = Admission.admit(next, :revocation, candidate)
+    assert receipt.event_ref == "event:" <> List.last(after_write)["hash"]
+    assert {:ok, ^after_write} = KernelClient.events_from(ctx.client, 1)
+    refute_receive :unexpected_recovery_signature
+    assert {:conflict, _} = Admission.admit(next, :revocation, %{candidate | issuer: "changed"})
+    refute_receive :unexpected_recovery_signature
+  end
+
+  test "reserved recovery operation stays uncertain across boots without signing or submitting",
+       ctx do
+    parent = self()
+
+    refusing = %{
+      ctx
+      | signer: fn _, _, _, _ ->
+          send(parent, :first_attempt)
+          {:error, :unavailable}
+        end
+    }
+
+    old = boundary(refusing, ctx.client)
+    candidate = Map.take(ctx, [:badge, :issuer])
+    {:ok, before} = KernelClient.events_from(ctx.client, 1)
+    assert {:outcome_unknown, _} = Admission.admit(old, :revocation, candidate)
+    assert_receive :first_attempt
+    GenServer.stop(old.journal)
+    next = boundary(refusing, ctx.client, directory: old.test_directory, boot: "next-boot")
+
+    assert {:outcome_unknown, %{reason: :signing_unconfirmed}} =
+             Admission.admit(next, :revocation, candidate)
+
+    refute_receive :first_attempt
+    assert {:ok, ^before} = KernelClient.events_from(ctx.client, 1)
+  end
+
+  test "unavailable journal never becomes a confirmed recovery or an ordinary preparation failure",
+       ctx do
+    GenServer.stop(ctx.boundary.journal)
+
+    assert {:outcome_unknown, %{reason: :recovery_boundary_unavailable}} =
+             Admission.admit(ctx.boundary, :revocation, Map.take(ctx, [:badge, :issuer]))
+  end
+
+  test "a competing same-spec journal result cannot substitute authority, even for a denial",
+       ctx do
+    candidate = Map.take(ctx, [:badge, :issuer])
+
+    other =
+      sign(ctx, target("Revocation"), %{"revokes" => %{"$ref" => ctx.badge}}, [
+        "event:sha256:" <> String.duplicate("f", 64)
+      ])
+
+    # Model the journal race: metadata was absent, then another caller completed
+    # the same target/spec under different authority before submit_once ran.
+    for outcome <- [:ok, :denied] do
+      journal =
+        spawn_link(fn ->
+          receive do
+            {:"$gen_call", from, {:operation, _}} -> GenServer.reply(from, :missing)
+          end
+
+          receive do
+            {:"$gen_call", from, {:submit, _, _, _, _}} ->
+              GenServer.reply(from, {outcome, %{}, other})
+          end
+        end)
+
+      assert {:conflict, %{reason: :recovery_authority_changed}} =
+               Admission.admit(%{ctx.boundary | journal: journal}, :revocation, candidate)
+    end
+  end
+
+  defp boundary(ctx, client, opts \\ []) do
+    directory =
+      Keyword.get_lazy(opts, :directory, fn ->
+        Path.join(System.tmp_dir!(), "recovery-journal-#{System.unique_integer([:positive])}")
+      end)
+
+    boot = Keyword.get(opts, :boot, "recovery-boot")
+    on_exit(fn -> File.rm_rf!(directory) end)
+
+    journal =
+      start_supervised!(
+        Supervisor.child_spec(
+          {NonceJournal, directory: directory, client: client, origin: ctx.origin, boot_id: boot},
+          id: make_ref(),
+          restart: :temporary
+        )
+      )
+
+    Admission.new(client, ctx.origin, ctx.signer,
+      journal: journal,
+      generation: %{"bootId" => boot, "runId" => "recovery"}
+    )
+    |> Map.put(:test_directory, directory)
   end
 
   defp target(kind),

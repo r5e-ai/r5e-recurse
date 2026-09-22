@@ -11,6 +11,7 @@ import sys
 import tempfile
 
 MAX = 8 * 1024 * 1024
+MAX_RECEIPT = 64 * 1024
 # Same explicit numeric domain enforced before Elixir reserves an operation.
 if hasattr(sys, "set_int_max_str_digits"):
     sys.set_int_max_str_digits(1024)
@@ -64,8 +65,20 @@ def dispatch(directory, command):
         # No retries or redirects. This process retains the writer lock through dispatch.
         connection.request("POST", path, body, {"Content-Type": "application/json"})
         response = connection.getresponse()
-        # Canonical history, not this receipt body, determines the terminal outcome.
-        return "acknowledged" if response.status in (201, 403) else "uncertain"
+        # A bounded untrusted locator can survive a later history-read failure.
+        # Only canonical history determines the outcome; this is never a grant.
+        result = {"status": "acknowledged" if response.status in (201, 403) else "uncertain"}
+        raw = response.read(MAX_RECEIPT + 1)
+        if len(raw) > MAX_RECEIPT:
+            return result
+        try:
+            receipt = json.loads(raw)
+            ref = receipt.get("eventRef") if isinstance(receipt, dict) else None
+            if isinstance(ref, str) and re.fullmatch(r"event:sha256:[0-9a-f]{64}", ref):
+                result["event_ref_hint"] = ref
+        except (ValueError, UnicodeError):
+            return result
+        return result
     finally:
         connection.close()
 
@@ -102,11 +115,13 @@ def main(directory):
         try:
             command = json.loads(data)
             if command.get("action") == "dispatch":
-                status = dispatch(directory, command)
+                result = dispatch(directory, command)
             else:
                 publish(directory, command["name"], command["content"])
-                status = "persisted"
-            print(json.dumps({"name": command["name"], "status": status}), flush=True)
+                result = "persisted"
+            if isinstance(result, str):
+                result = {"status": result}
+            print(json.dumps({"name": command["name"], **result}), flush=True)
         except Exception:
             # A failed acknowledgement does not imply that publication did not happen.
             print(json.dumps({"name": command.get("name"), "status": "uncertain"}), flush=True)

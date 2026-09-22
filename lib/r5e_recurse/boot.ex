@@ -69,9 +69,17 @@ defmodule R5eRecurse.Boot do
                    {:ok, _} <- admitted(state.boundary, :revocation, binding) do
                 :ok
               else
-                {:outcome_unknown, _} = uncertain -> uncertain
-                {:error, _} = error -> error
-                _ -> {:error, :malformed_reconciliation}
+                {:outcome_unknown, _} = uncertain ->
+                  uncertain
+
+                {:error, _} = error ->
+                  error
+
+                {tag, details} = failure when tag in [:denied, :conflict] and is_map(details) ->
+                  failure
+
+                _ ->
+                  {:error, :malformed_reconciliation}
               end
 
             if result == :ok, do: {:cont, :ok}, else: {:halt, result}
@@ -104,6 +112,9 @@ defmodule R5eRecurse.Boot do
 
       {:error, _} = error ->
         error
+
+      {tag, details} = failure when tag in [:denied, :conflict] and is_map(details) ->
+        failure
 
       _ ->
         {:error, :admission_unconfirmed}

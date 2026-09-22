@@ -24,6 +24,9 @@ defmodule R5eRecurse.NonceJournal do
 
   def lookup(server, operation_id), do: GenServer.call(server, {:lookup, operation_id}, :infinity)
 
+  @doc "Read immutable public operation metadata; never signs or submits."
+  def operation(server, operation_id), do: GenServer.call(server, {:operation, operation_id})
+
   @impl true
   def init(opts) do
     Process.flag(:trap_exit, true)
@@ -46,6 +49,16 @@ defmodule R5eRecurse.NonceJournal do
   end
 
   @impl true
+  def handle_call({:operation, id}, _, state) do
+    result =
+      case Map.fetch(state.entries, id) do
+        {:ok, entry} -> {:ok, Map.take(entry, ~w(origin generation candidate status request))}
+        :error -> :missing
+      end
+
+    {:reply, result, state}
+  end
+
   def handle_call({:lookup, id}, _, state) do
     result =
       case Map.fetch(state.entries, id) do
@@ -159,9 +172,26 @@ defmodule R5eRecurse.NonceJournal do
     }
 
     case helper_call(state.lock, command, state.client.timeout + 1000) do
-      {:ok, %{"status" => "acknowledged"}} -> scan(state.client, entry)
-      {:ok, %{"status" => "connection_failed"}} -> {:transport_failure, :connection_failed}
-      _ -> {:outcome_unknown, %{reason: :submission_unconfirmed}}
+      {:ok, %{"status" => "acknowledged"} = hint} ->
+        case scan(state.client, entry) do
+          {:outcome_unknown, details} ->
+            case hint["event_ref_hint"] do
+              "event:sha256:" <> hash = ref when byte_size(hash) == 64 ->
+                {:outcome_unknown, Map.put(details, :event_ref_hint, ref)}
+
+              _ ->
+                {:outcome_unknown, details}
+            end
+
+          result ->
+            result
+        end
+
+      {:ok, %{"status" => "connection_failed"}} ->
+        {:transport_failure, :connection_failed}
+
+      _ ->
+        {:outcome_unknown, %{reason: :submission_unconfirmed}}
     end
   rescue
     _ -> {:outcome_unknown, %{reason: :submission_failed}}
