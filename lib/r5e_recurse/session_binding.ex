@@ -262,17 +262,26 @@ defmodule R5eRecurse.SessionBinding do
     do: Map.take(target, ~w(group version kind)) == %{"group" => g, "version" => v, "kind" => k}
 
   defp expiry(badge, delegation) do
-    now = DateTime.utc_now() |> DateTime.truncate(:second)
+    now = DateTime.utc_now()
 
-    with {:ok, b, _} <- DateTime.from_iso8601(badge["notAfter"]),
-         {:ok, d, _} <- DateTime.from_iso8601(delegation["notAfter"]),
-         {:ok, bf, _} <- DateTime.from_iso8601(badge["notBefore"]),
-         {:ok, df, _} <- DateTime.from_iso8601(delegation["notBefore"]),
-         true <- DateTime.compare(now, bf) != :lt and DateTime.compare(now, df) != :lt do
-      limit = Enum.min_by([b, d, DateTime.add(now, 300, :second)], &DateTime.to_unix/1)
+    now_string = DateTime.to_iso8601(now)
 
-      if DateTime.compare(limit, now) == :gt,
-        do: {:ok, DateTime.to_iso8601(limit)},
+    with {:ok, bf} <- RecurseVerify.Instant.compare(badge["notBefore"], now_string),
+         {:ok, df} <- RecurseVerify.Instant.compare(delegation["notBefore"], now_string),
+         true <- bf != :gt and df != :gt,
+         true <- RecurseVerify.Instant.valid?(badge["notAfter"]),
+         true <- RecurseVerify.Instant.valid?(delegation["notAfter"]) do
+      limit =
+        Enum.reduce(
+          [badge["notAfter"], delegation["notAfter"]],
+          DateTime.to_iso8601(DateTime.add(now, 300, :second)),
+          fn ending, limit ->
+            if RecurseVerify.Instant.compare(ending, limit) == {:ok, :lt}, do: ending, else: limit
+          end
+        )
+
+      if RecurseVerify.Instant.compare(limit, now_string) == {:ok, :gt},
+        do: {:ok, limit},
         else: {:error, :expired_credential}
     else
       _ -> {:error, :invalid_credential_term}

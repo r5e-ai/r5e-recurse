@@ -1,6 +1,6 @@
 defmodule R5eRecurse.SignerKernelTest do
   use ExUnit.Case, async: false
-  alias R5eRecurse.{Authority, KernelClient, SessionKeys, Signer, Signer.Snapshot}
+  alias R5eRecurse.{Authority, KernelClient, SessionKeys, Signer, Signer.Snapshot, Signer.Channel}
   alias R5eRecurse.PolicyBaseTest, as: Fixture
   alias RecurseVerify.{Canonical, DSSE}
   @moduletag :deployment
@@ -22,15 +22,25 @@ defmodule R5eRecurse.SignerKernelTest do
     {:ok, ctx} = Fixture.setup_fixture(session_kind)
     # This Kind is absent from Fixture, so install the actual closed definition;
     # no existing Kind/schema or shared fixture function is replaced.
-    prompt_kind = File.read!("/fold/apps/recurse_fold/priv/kinds/prompt.json") |> Jason.decode!()
+    prompt_kind = File.read!("test/fixtures/gateway/prompt.json") |> Jason.decode!()
 
     assert {:ok, _} =
              Fixture.admit("core.r5e.io", "v1", "KindDefinition", nil, prompt_kind, :node, [])
 
+    call_kind = File.read!("test/fixtures/gateway/llm-call.json") |> Jason.decode!()
+
+    assert {:ok, _} =
+             Fixture.admit("core.r5e.io", "v1", "KindDefinition", nil, call_kind, :node, [])
+
+    policy_kind = File.read!("test/fixtures/gateway/policy-bundle.json") |> Jason.decode!()
+
+    assert {:ok, _} =
+             Fixture.admit("core.r5e.io", "v1", "KindDefinition", nil, policy_kind, :node, [])
+
     {:ok, ctx}
   end
 
-  test "fresh real credential history authorizes a session Prompt and parent revocation stops the next signature",
+  test "real Channel signs Prompt, LlmCall and ManagedRequest; parent revocation fences the next operation",
        ctx do
     keys = start_supervised!(SessionKeys)
     {:ok, key} = SessionKeys.create(keys, "live-signer", self())
@@ -64,6 +74,37 @@ defmodule R5eRecurse.SignerKernelTest do
     delegation = issue(ctx.operator, delegation_plan, keys, key)
     refs = [badge["eventRef"], delegation["eventRef"]]
 
+    engine_bytes = Recurse.Fold.Policy.EngineBuild.bytes()
+
+    assert {:ok, _, engine_address, _} =
+             R5e.TestHelpers.cas_admit(R5e.DSSE.node_key_id(), engine_bytes, "application/json")
+
+    Recurse.Fold.Policy.EngineBuild.cache_address(engine_address)
+    policy_paths = ["gateway.r5e.io/v1alpha1/PolicyBundle", "gateway.r5e.io/v1alpha1/LlmCall"]
+    policy_badge = Fixture.credential("Badge", :node, ctx.operator, policy_paths, nil, [])
+    policy_grant = Fixture.credential("Endorsement", :node, ctx.operator, policy_paths, nil, [])
+
+    policy_source =
+      "permit(principal == Recurse::Principal::ServiceAccount::\"#{actor}\", action, resource);"
+
+    assert {:ok, _, policy_address, _} =
+             R5e.TestHelpers.cas_admit(R5e.DSSE.node_key_id(), policy_source, "text/plain")
+
+    assert {:ok, _} =
+             Fixture.admit(
+               "gateway.r5e.io",
+               "v1alpha1",
+               "PolicyBundle",
+               "active",
+               %{
+                 "engine" => "cedar",
+                 "sourceRef" => %{"$ref" => policy_address},
+                 "governs" => ["gateway.r5e.io/v1alpha1/LlmCall"]
+               },
+               ctx.operator,
+               [policy_badge["eventRef"], policy_grant["eventRef"]]
+             )
+
     # Bootstrap span uses the actual ephemeral key before it is signer-guarded.
     span_target = %{
       "group" => "gateway.r5e.io",
@@ -86,6 +127,37 @@ defmodule R5eRecurse.SignerKernelTest do
              })
 
     span_ref = "gateway.r5e.io/v1alpha1/AgentSession/" <> span["name"]
+
+    binding_spec =
+      Map.merge(ctx.binding, %{
+        "agentSession" => %{"$ref" => span_ref},
+        "agentSessionAdmission" => %{"$ref" => span["eventRef"]},
+        "sessionKey" => actor,
+        "generation" => key.generation,
+        "badge" => %{"$ref" => badge["eventRef"]},
+        "delegation" => %{"$ref" => delegation["eventRef"]},
+        "role" => "producer"
+      })
+
+    binding_target = %{
+      "group" => "recurse.r5e.io",
+      "version" => "v1alpha1",
+      "kind" => "SessionBinding",
+      "name" => nil
+    }
+
+    binding_envelope = session_envelope(keys, key, binding_target, binding_spec, refs)
+
+    assert {:ok, binding} =
+             R5e.Admission.admit(%{
+               group: "recurse.r5e.io",
+               version: "v1alpha1",
+               kind: "SessionBinding",
+               name: nil,
+               spec: binding_spec,
+               envelope: binding_envelope
+             })
+
     body = " {\"messages\":[{\"content\":\"exact body\"}],\"temperature\":0.5} "
 
     assert {:ok, _, address, _} =
@@ -161,12 +233,23 @@ defmodule R5eRecurse.SignerKernelTest do
     end
 
     signer = start_supervised!({Signer, keys: keys, snapshot: snapshot})
+
+    directory =
+      Path.join(System.tmp_dir!(), "kernel-signer-channel-#{System.unique_integer([:positive])}")
+
+    channel =
+      start_supervised!(
+        {Channel, keys: keys, directory: directory, handler: Signer.channel_handler(signer)}
+      )
+
+    provision = Channel.provision(channel)
     {:ok, slot} = Signer.register(signer, self(), key.generation, "request-1", context)
     wire = %{"kind" => @prompt, "specBytes" => Canonical.encode(spec), "authority" => refs}
-    assert {:ok, envelope} = Signer.sign(signer, slot, wire)
+    assert %{"ok" => envelope} = channel_sign(channel, provision, key.generation, slot, wire)
     assert_receive {:covered_head, first_head}
     assert first_head == before.head.seq
-    assert {:ok, _request, ^actor} = DSSE.verify(envelope, key.public_key)
+    assert {:ok, prompt_request, ^actor} = DSSE.verify(envelope, key.public_key)
+    assert Jason.decode!(prompt_request)["authority"] == refs
     assert {:ok, receipt} = KernelClient.submit(client, target, envelope, spec)
     assert {:ok, after_prompt} = Snapshot.read(client, origin)
 
@@ -174,6 +257,129 @@ defmodule R5eRecurse.SignerKernelTest do
              Snapshot.record(after_prompt, receipt["eventRef"])
 
     assert {:error, :operation_consumed} = Signer.sign(signer, slot, wire)
+
+    # Real closed gateway schema, with gatewayContext deliberately omitted:
+    # this exercises signer/transport/admission, not managed gateway forwarding.
+    call_kind = "gateway.r5e.io/v1alpha1/LlmCall"
+    call_target = %{target | "kind" => "LlmCall"}
+
+    routing = %{
+      "provider" => "provider",
+      "transport" => "https",
+      "requestPath" => "/v1/responses",
+      "apiFormat" => "responses"
+    }
+
+    call_spec =
+      Map.merge(routing, %{
+        "model" => "model",
+        "upstreamHost" => "provider.example",
+        "session" => %{"$ref" => span_ref},
+        "prompt" => %{"$ref" => "gateway.r5e.io/v1alpha1/Prompt/" <> receipt["name"]}
+      })
+
+    read_record = fn ref ->
+      with {:ok, view} <- Snapshot.read(client, origin), do: Snapshot.record(view, ref, actor)
+    end
+
+    call_context = %{
+      context
+      | request:
+          Map.merge(context.request, %{
+            targets: %{call_kind => call_target},
+            model: "model",
+            upstream_host: "provider.example",
+            call_routing: routing,
+            read_record: read_record
+          }),
+        authority: %{context.authority | kind: call_kind}
+    }
+
+    {:ok, call_slot} = Signer.register(signer, self(), key.generation, "request-1", call_context)
+
+    call_wire = %{
+      "kind" => call_kind,
+      "specBytes" => Canonical.encode(call_spec),
+      "authority" => refs
+    }
+
+    assert %{"ok" => call_envelope} =
+             channel_sign(channel, provision, key.generation, call_slot, call_wire)
+
+    assert_receive {:covered_head, _}
+    assert {:ok, call_request, ^actor} = DSSE.verify(call_envelope, key.public_key)
+    assert Jason.decode!(call_request)["authority"] == refs
+
+    assert {:ok, call_receipt} =
+             KernelClient.submit(client, call_target, call_envelope, call_spec)
+
+    assert {:error, :operation_consumed} = Signer.sign(signer, call_slot, call_wire)
+
+    managed_kind = "recurse.r5e.io/v1alpha1/ManagedRequest"
+    managed_target = %{target | "group" => "recurse.r5e.io", "kind" => "ManagedRequest"}
+    # Manual exact candidate: the separate ManagedRequest builder is not tested here.
+    managed_spec = %{
+      "sessionBinding" => %{"$ref" => binding["eventRef"]},
+      "llmCall" => %{"$ref" => call_receipt["eventRef"]},
+      "inboundBody" => %{"$ref" => address},
+      "outboundBody" => %{"$ref" => address},
+      "bodyDigest" => Canonical.hash_bytes(body),
+      "firstInput" => %{
+        "fieldPath" => "/messages/0/content",
+        "digest" => Canonical.hash_bytes("exact body")
+      },
+      "method" => "POST",
+      "path" => "/v1/responses",
+      "upstream" => "provider.example",
+      "transport" => "https",
+      "semanticHeaders" => [],
+      "operationId" => "request-1"
+    }
+
+    managed_context = %{
+      call_context
+      | request:
+          Map.merge(call_context.request, %{
+            targets: %{managed_kind => managed_target},
+            session_binding: binding["eventRef"],
+            llm_call: call_receipt["eventRef"],
+            managed: managed_spec
+          }),
+        authority: %{context.authority | kind: managed_kind}
+    }
+
+    {:ok, managed_slot} =
+      Signer.register(signer, self(), key.generation, "request-1", managed_context)
+
+    managed_wire = %{
+      "kind" => managed_kind,
+      "specBytes" => Canonical.encode(managed_spec),
+      "authority" => refs
+    }
+
+    assert %{"ok" => managed_envelope} =
+             channel_sign(channel, provision, key.generation, managed_slot, managed_wire)
+
+    assert_receive {:covered_head, _}
+    assert {:ok, managed_request, ^actor} = DSSE.verify(managed_envelope, key.public_key)
+    assert Jason.decode!(managed_request)["authority"] == refs
+
+    assert {:ok, managed_receipt} =
+             KernelClient.submit(client, managed_target, managed_envelope, managed_spec)
+
+    assert {:error, :operation_consumed} = Signer.sign(signer, managed_slot, managed_wire)
+    assert {:ok, final_view} = Snapshot.read(client, origin)
+
+    for {event, expected} <- [
+          {receipt, spec},
+          {call_receipt, call_spec},
+          {managed_receipt, managed_spec}
+        ] do
+      assert {:ok, %{actor: ^actor, spec: ^expected}} =
+               Snapshot.record(final_view, event["eventRef"])
+    end
+
+    assert {:ok, ^body} = KernelClient.get_cas(client, address)
 
     # Revoke the actual issuer parent, not only a leaf in a synthetic index.
     assert {:ok, revocation} =
@@ -191,6 +397,32 @@ defmodule R5eRecurse.SignerKernelTest do
     assert next_head >= revocation["seq"] and next_head > first_head
     assert {:error, :operation_consumed} = Signer.sign(signer, next_slot, wire)
     assert length(R5e.Log.events()) == next_head
+  end
+
+  defp channel_sign(channel, provision, generation, slot, request) do
+    {:ok, route} = Channel.register(channel, self(), generation, %{slot: slot})
+
+    message = %{
+      "secret" => provision.secret,
+      "route" => route.route,
+      "credential" => route.credential,
+      "generation" => generation,
+      "operation" => "authenticate",
+      "request" => %{}
+    }
+
+    assert %{"ok" => true} = channel_wire(provision.path, message)
+    channel_wire(provision.path, %{message | "operation" => "sign", "request" => request})
+  end
+
+  defp channel_wire(path, message) do
+    {:ok, socket} =
+      :gen_tcp.connect({:local, String.to_charlist(path)}, 0, [:binary, active: false, packet: 4])
+
+    :ok = :gen_tcp.send(socket, Jason.encode!(message))
+    {:ok, bytes} = :gen_tcp.recv(socket, 0, 5000)
+    :gen_tcp.close(socket)
+    Jason.decode!(bytes)
   end
 
   defp issue(operator, plan, keys, key) do

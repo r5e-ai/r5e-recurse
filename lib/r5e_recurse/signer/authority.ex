@@ -23,7 +23,7 @@ defmodule R5eRecurse.Signer.Authority do
   Freshness is checkpoint-relative; revocation racing subsequent admission is
   still enforced by the kernel. This does not implement generation/replay gates.
   """
-  alias RecurseVerify.{Authority, Canonical, Chain, DSSE, Identity}
+  alias RecurseVerify.{Authority, Canonical, Chain, DSSE, Identity, Instant}
   alias R5eRecurse.{Authority.Kinds, Commands.Envelope}
   @credential ~w(core.r5e.io/v1/Badge core.r5e.io/v1/Endorsement)
   @relevant @credential ++ ~w(core.r5e.io/v1/Revocation core.r5e.io/v1/Succession)
@@ -50,13 +50,13 @@ defmodule R5eRecurse.Signer.Authority do
          links =
            Authority.links(index, ctx.refs.badge) ++ Authority.links(index, ctx.refs.delegation),
          expires =
-           Enum.reduce(links, DateTime.add(ctx.now, 300, :second), fn link, limit ->
-             {:ok, ending, _} = DateTime.from_iso8601(link["notAfter"])
-             if DateTime.compare(ending, limit) == :lt, do: ending, else: limit
+           Enum.reduce(links, DateTime.to_iso8601(DateTime.add(ctx.now, 300, :second)), fn link,
+                                                                                           limit ->
+             {:ok, order} = Instant.compare(link["notAfter"], limit)
+             if order == :lt, do: link["notAfter"], else: limit
            end),
-         :gt <- DateTime.compare(expires, ctx.now) do
-      {:ok,
-       %{authority: ctx.authority, expires: DateTime.to_iso8601(expires), head: snapshot.head}}
+         {:ok, :gt} <- Instant.compare(expires, now) do
+      {:ok, %{authority: ctx.authority, expires: expires, head: snapshot.head}}
     else
       _ -> {:error, :authority_unavailable}
     end

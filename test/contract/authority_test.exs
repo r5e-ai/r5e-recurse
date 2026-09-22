@@ -53,6 +53,20 @@ defmodule R5eRecurse.AuthorityTest do
     assert runtime.candidate.spec["subjectKind"] == "service"
   end
 
+  test "credential terms preserve core spelling and nanosecond ordering" do
+    opts =
+      Keyword.merge(options(),
+        not_before: "2030-01-01t00:00:00z",
+        not_after: "2030-01-01T00:00:00.000000001-00:00"
+      )
+
+    assert {:ok, plan} = Authority.session_endorsement(opts)
+    assert plan.candidate.spec["notAfter"] == opts[:not_after]
+
+    assert {:error, _} =
+             Authority.session_endorsement(Keyword.put(opts, :not_after, opts[:not_before]))
+  end
+
   test "scope predicates refuse wrong node/task and malformed shape" do
     scope = %{"taskId" => "t", "node" => "n"}
     facts = %{kind: "recurse.r5e.io/v1alpha1/Task", task_id: "t", node_ref: "n"}

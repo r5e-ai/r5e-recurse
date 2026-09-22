@@ -18,6 +18,17 @@ defmodule R5eRecurse.Signer.AuthorityTest do
     assert {:ok, %{expires: "2030-01-01T12:02:00Z"}} = Authority.validate(snapshot, ctx)
   end
 
+  test "core RFC3339 spellings and nanosecond term limits retain exact expiry" do
+    for ending <- [
+          "2030-01-01t12:02:00z",
+          "2030-01-01T12:02:00-00:00",
+          "2030-01-01T12:00:00.000000001Z"
+        ] do
+      {snapshot, ctx} = fixture(delegation_changes: %{"notAfter" => ending})
+      assert {:ok, %{expires: ^ending}} = Authority.validate(snapshot, ctx)
+    end
+  end
+
   test "wrong subject, task, role, widened or missing kinds refuse" do
     for options <- [
           [wrong_subject: true],
