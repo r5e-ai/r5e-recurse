@@ -9,6 +9,9 @@ defmodule R5eRecurse.SessionKeys do
   def owned_by?(server, generation, owner),
     do: GenServer.call(server, {:owner, generation, owner})
 
+  def bind_signer(server, generation, signer),
+    do: GenServer.call(server, {:bind_signer, generation, signer})
+
   def public_key(server, generation), do: GenServer.call(server, {:public, generation})
 
   def sign(server, generation, bytes) when is_binary(bytes),
@@ -39,7 +42,9 @@ defmodule R5eRecurse.SessionKeys do
           owner: owner,
           monitor: Process.monitor(owner),
           public: public,
-          private: private
+          private: private,
+          signer: nil,
+          signer_monitor: nil
         }
 
         {:reply, {:ok, %{generation: generation, public_key: public}},
@@ -51,12 +56,38 @@ defmodule R5eRecurse.SessionKeys do
     {:reply, :ok, remove(state, generation)}
   end
 
+  def handle_call({:bind_signer, generation, signer}, _, state) when is_pid(signer) do
+    case Map.fetch(state.keys, generation) do
+      {:ok, key} ->
+        cond do
+          not live?(key) ->
+            {:reply, {:error, :stale_binding}, remove(state, generation)}
+
+          not Process.alive?(signer) ->
+            {:reply, {:error, :dead_signer}, state}
+
+          key.signer == signer ->
+            {:reply, :ok, state}
+
+          key.signer != nil ->
+            {:reply, {:error, :signer_already_bound}, state}
+
+          true ->
+            key = %{key | signer: signer, signer_monitor: Process.monitor(signer)}
+            {:reply, :ok, put_in(state.keys[generation], key)}
+        end
+
+      :error ->
+        {:reply, {:error, :stale_generation}, state}
+    end
+  end
+
   def handle_call(request, _, state) do
     generation = elem(request, 1)
 
     case Map.fetch(state.keys, generation) do
       {:ok, key} ->
-        if Process.alive?(key.owner) do
+        if live?(key) do
           result =
             case request do
               {:owner, _, owner} -> key.owner == owner
@@ -76,7 +107,12 @@ defmodule R5eRecurse.SessionKeys do
 
   @impl true
   def handle_info({:DOWN, ref, :process, _, _}, state) do
-    {:noreply, %{state | keys: Map.reject(state.keys, fn {_, key} -> key.monitor == ref end)}}
+    generations =
+      for {generation, key} <- state.keys,
+          key.monitor == ref or key.signer_monitor == ref,
+          do: generation
+
+    {:noreply, Enum.reduce(generations, state, fn generation, acc -> remove(acc, generation) end)}
   end
 
   # Removal releases the BEAM reference; it is not a claim of physical memory zeroization.
@@ -87,9 +123,14 @@ defmodule R5eRecurse.SessionKeys do
 
       {key, keys} ->
         Process.demonitor(key.monitor, [:flush])
+        if key.signer_monitor, do: Process.demonitor(key.signer_monitor, [:flush])
         %{state | keys: keys}
     end
   end
+
+  # Synchronous checks fence reuse even before either monitor DOWN is handled.
+  defp live?(key),
+    do: Process.alive?(key.owner) and (key.signer == nil or Process.alive?(key.signer))
 
   defp token, do: Base.url_encode64(:crypto.strong_rand_bytes(32), padding: false)
   @impl true
