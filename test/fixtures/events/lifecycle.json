@@ -1,7 +1,7 @@
 [
   {
     "eventRef": {
-      "$ref": "e:task"
+      "$ref": "event:sha256:0ebb429fa86d481c2630fac53db1c91cffed5d4d41d1021c179444eb67e7ee0b"
     },
     "seq": 1,
     "target": {
@@ -16,18 +16,18 @@
     "spec": {
       "id": "task-1",
       "node": {
-        "$ref": "e:node"
+        "$ref": "event:sha256:545ea538461003efdc8c81c244531b003f6f26cfccf6c0073b3239fdedf49446"
       },
       "delegatedBy": "operator",
       "delegationRef": {
-        "$ref": "e:delegation"
+        "$ref": "event:sha256:5214bf637717ddb480ecc554b2ec4c3f9a0b4205efcb2714d4a2da6ad4f6bb1a"
       },
       "step": "produce"
     }
   },
   {
     "eventRef": {
-      "$ref": "e:prepare"
+      "$ref": "event:sha256:45666d976bab316d970ec459afd866d9e9a0681ac510f0911f2ac33e9142e51b"
     },
     "seq": 2,
     "target": {
@@ -41,7 +41,7 @@
     },
     "spec": {
       "task": {
-        "$ref": "e:task"
+        "$ref": "event:sha256:0ebb429fa86d481c2630fac53db1c91cffed5d4d41d1021c179444eb67e7ee0b"
       },
       "commandId": "start-1",
       "generation": {
@@ -54,7 +54,7 @@
   },
   {
     "eventRef": {
-      "$ref": "e:binding"
+      "$ref": "event:sha256:80f70afeef3caa57646fd20afb95be9c3f2c03d38e091906de31838813dcc22e"
     },
     "seq": 3,
     "target": {
@@ -68,7 +68,7 @@
     },
     "spec": {
       "task": {
-        "$ref": "e:task"
+        "$ref": "event:sha256:0ebb429fa86d481c2630fac53db1c91cffed5d4d41d1021c179444eb67e7ee0b"
       },
       "generation": {
         "bootId": "boot-1",
@@ -77,24 +77,24 @@
       "actorType": "agent",
       "provider": "claude",
       "agentSession": {
-        "$ref": "e:span"
+        "$ref": "event:sha256:37a0025aa1f2e29f9f88f59f961e44a320849dfc79a85ef3c02654d50d2e7480"
       },
       "sessionKey": "session-key",
       "agentSessionAdmission": {
-        "$ref": "e:span-admission"
+        "$ref": "event:sha256:f498b7847f845ffff4fb73c9928de0418dd85f69327e4f23778a70c9476fa6ad"
       },
       "badge": {
-        "$ref": "e:badge"
+        "$ref": "event:sha256:8805cdea2b197df5fd555dc359a7f5beed2e6d65de498ce3df3de94d78e1e262"
       },
       "delegation": {
-        "$ref": "e:session-delegation"
+        "$ref": "event:sha256:bf90489a724ee0c10303481dcd42a2b862844c094f578d1e8b4920352d0c86bf"
       },
       "role": "producer",
       "model": "fixture-model",
       "harness": "fixture",
       "harnessVersion": "1",
       "contextManifest": {
-        "$ref": "e:context"
+        "$ref": "event:sha256:ea7792a26f405e2ae9c6f49ca93bbe6076ceac0a1fc53d83426c7d7f2d9377e4"
       },
       "workspace": {
         "description": "synthetic fixture",
@@ -107,7 +107,7 @@
   },
   {
     "eventRef": {
-      "$ref": "e:ready"
+      "$ref": "event:sha256:b24d6d33736ecd5604a4b17bc9c6481039fac362bb7df044ef1c10a2bfd21db6"
     },
     "seq": 4,
     "target": {
@@ -121,11 +121,11 @@
     },
     "spec": {
       "task": {
-        "$ref": "e:task"
+        "$ref": "event:sha256:0ebb429fa86d481c2630fac53db1c91cffed5d4d41d1021c179444eb67e7ee0b"
       },
       "commandId": "start-1",
       "sessionBinding": {
-        "$ref": "e:binding"
+        "$ref": "event:sha256:80f70afeef3caa57646fd20afb95be9c3f2c03d38e091906de31838813dcc22e"
       },
       "generation": {
         "bootId": "boot-1",
@@ -133,14 +133,14 @@
       },
       "transition": "ready",
       "priorLifecycle": {
-        "$ref": "e:prepare"
+        "$ref": "event:sha256:45666d976bab316d970ec459afd866d9e9a0681ac510f0911f2ac33e9142e51b"
       },
       "observationSource": "runtime"
     }
   },
   {
     "eventRef": {
-      "$ref": "e:running"
+      "$ref": "event:sha256:c071cf5f5ed6f884cc70155b6f05f755fd46a302d05e4261b7e92ce878bbfed8"
     },
     "seq": 5,
     "target": {
@@ -154,11 +154,11 @@
     },
     "spec": {
       "task": {
-        "$ref": "e:task"
+        "$ref": "event:sha256:0ebb429fa86d481c2630fac53db1c91cffed5d4d41d1021c179444eb67e7ee0b"
       },
       "commandId": "start-1",
       "sessionBinding": {
-        "$ref": "e:binding"
+        "$ref": "event:sha256:80f70afeef3caa57646fd20afb95be9c3f2c03d38e091906de31838813dcc22e"
       },
       "generation": {
         "bootId": "boot-1",
@@ -166,14 +166,14 @@
       },
       "transition": "running",
       "priorLifecycle": {
-        "$ref": "e:ready"
+        "$ref": "event:sha256:b24d6d33736ecd5604a4b17bc9c6481039fac362bb7df044ef1c10a2bfd21db6"
       },
       "observationSource": "dispatch_observed"
     }
   },
   {
     "eventRef": {
-      "$ref": "e:work"
+      "$ref": "event:sha256:00e13ed7af55b27622f1d6eab5bec0147e68efe28dc2b12461117afa1a5ed40e"
     },
     "seq": 6,
     "target": {
@@ -188,7 +188,7 @@
     "spec": {
       "type": "work",
       "sessionBinding": {
-        "$ref": "e:binding"
+        "$ref": "event:sha256:80f70afeef3caa57646fd20afb95be9c3f2c03d38e091906de31838813dcc22e"
       },
       "content": {
         "$ref": "cas:work"
@@ -200,7 +200,7 @@
   },
   {
     "eventRef": {
-      "$ref": "e:reflecting"
+      "$ref": "event:sha256:c39b9c280c6250a6df94e67dee5f23da98b932f5803b34420a4fbc27409fcf8e"
     },
     "seq": 7,
     "target": {
@@ -214,11 +214,11 @@
     },
     "spec": {
       "task": {
-        "$ref": "e:task"
+        "$ref": "event:sha256:0ebb429fa86d481c2630fac53db1c91cffed5d4d41d1021c179444eb67e7ee0b"
       },
       "commandId": "finish-1",
       "sessionBinding": {
-        "$ref": "e:binding"
+        "$ref": "event:sha256:80f70afeef3caa57646fd20afb95be9c3f2c03d38e091906de31838813dcc22e"
       },
       "generation": {
         "bootId": "boot-1",
@@ -226,14 +226,14 @@
       },
       "transition": "reflecting",
       "priorLifecycle": {
-        "$ref": "e:running"
+        "$ref": "event:sha256:c071cf5f5ed6f884cc70155b6f05f755fd46a302d05e4261b7e92ce878bbfed8"
       },
       "observationSource": "runtime"
     }
   },
   {
     "eventRef": {
-      "$ref": "e:reflection"
+      "$ref": "event:sha256:f30409c51a78ed6906df6e53052bcb0fe52ae708ebd809bd2d52820fceb253ed"
     },
     "seq": 8,
     "target": {
@@ -248,7 +248,7 @@
     "spec": {
       "type": "reflection",
       "sessionBinding": {
-        "$ref": "e:binding"
+        "$ref": "event:sha256:80f70afeef3caa57646fd20afb95be9c3f2c03d38e091906de31838813dcc22e"
       },
       "content": {
         "$ref": "cas:reflection"
@@ -257,14 +257,14 @@
       "completeness": "complete",
       "sources": [
         {
-          "$ref": "e:work"
+          "$ref": "event:sha256:00e13ed7af55b27622f1d6eab5bec0147e68efe28dc2b12461117afa1a5ed40e"
         }
       ]
     }
   },
   {
     "eventRef": {
-      "$ref": "e:completed"
+      "$ref": "event:sha256:4ddb3e96801a1ee2b77dc5247c0db478d5f97a93b90e7cdb09f5f51d43764b08"
     },
     "seq": 9,
     "target": {
@@ -278,11 +278,11 @@
     },
     "spec": {
       "task": {
-        "$ref": "e:task"
+        "$ref": "event:sha256:0ebb429fa86d481c2630fac53db1c91cffed5d4d41d1021c179444eb67e7ee0b"
       },
       "commandId": "finish-1",
       "sessionBinding": {
-        "$ref": "e:binding"
+        "$ref": "event:sha256:80f70afeef3caa57646fd20afb95be9c3f2c03d38e091906de31838813dcc22e"
       },
       "generation": {
         "bootId": "boot-1",
@@ -290,14 +290,14 @@
       },
       "transition": "completed",
       "priorLifecycle": {
-        "$ref": "e:reflecting"
+        "$ref": "event:sha256:c39b9c280c6250a6df94e67dee5f23da98b932f5803b34420a4fbc27409fcf8e"
       },
       "outputs": [
         {
-          "$ref": "e:work"
+          "$ref": "event:sha256:00e13ed7af55b27622f1d6eab5bec0147e68efe28dc2b12461117afa1a5ed40e"
         },
         {
-          "$ref": "e:reflection"
+          "$ref": "event:sha256:f30409c51a78ed6906df6e53052bcb0fe52ae708ebd809bd2d52820fceb253ed"
         }
       ],
       "observationSource": "runtime"

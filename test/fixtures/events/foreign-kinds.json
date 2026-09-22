@@ -1,0 +1,113 @@
+{
+  "foreign_binding": {
+    "eventRef": {
+      "$ref": "event:sha256:80f70afeef3caa57646fd20afb95be9c3f2c03d38e091906de31838813dcc22e"
+    },
+    "seq": 3,
+    "target": {
+      "group": "foreign.example",
+      "version": "v1alpha1",
+      "kind": "SessionBinding",
+      "name": "binding"
+    },
+    "actor": {
+      "id": "session-key"
+    },
+    "spec": {
+      "task": {
+        "$ref": "event:sha256:0ebb429fa86d481c2630fac53db1c91cffed5d4d41d1021c179444eb67e7ee0b"
+      },
+      "generation": {
+        "bootId": "boot-1",
+        "runId": "run-1"
+      },
+      "actorType": "agent",
+      "provider": "claude",
+      "agentSession": {
+        "$ref": "event:sha256:37a0025aa1f2e29f9f88f59f961e44a320849dfc79a85ef3c02654d50d2e7480"
+      },
+      "sessionKey": "session-key",
+      "agentSessionAdmission": {
+        "$ref": "event:sha256:f498b7847f845ffff4fb73c9928de0418dd85f69327e4f23778a70c9476fa6ad"
+      },
+      "badge": {
+        "$ref": "event:sha256:8805cdea2b197df5fd555dc359a7f5beed2e6d65de498ce3df3de94d78e1e262"
+      },
+      "delegation": {
+        "$ref": "event:sha256:bf90489a724ee0c10303481dcd42a2b862844c094f578d1e8b4920352d0c86bf"
+      },
+      "role": "producer",
+      "model": "fixture-model",
+      "harness": "fixture",
+      "harnessVersion": "1",
+      "contextManifest": {
+        "$ref": "event:sha256:ea7792a26f405e2ae9c6f49ca93bbe6076ceac0a1fc53d83426c7d7f2d9377e4"
+      },
+      "workspace": {
+        "description": "synthetic fixture",
+        "digest": "fixture-digest"
+      },
+      "custody": "runtime-held",
+      "profile": "cooperative-local",
+      "signerReachability": "same-user-cooperative-limit"
+    }
+  },
+  "foreign_work": {
+    "eventRef": {
+      "$ref": "event:sha256:00e13ed7af55b27622f1d6eab5bec0147e68efe28dc2b12461117afa1a5ed40e"
+    },
+    "seq": 6,
+    "target": {
+      "group": "foreign.example",
+      "version": "v1alpha1",
+      "kind": "Artifact",
+      "name": "work"
+    },
+    "actor": {
+      "id": "session-key"
+    },
+    "spec": {
+      "type": "work",
+      "sessionBinding": {
+        "$ref": "event:sha256:80f70afeef3caa57646fd20afb95be9c3f2c03d38e091906de31838813dcc22e"
+      },
+      "content": {
+        "$ref": "cas:work"
+      },
+      "mediaType": "text/plain",
+      "completeness": "complete",
+      "sources": []
+    }
+  },
+  "foreign_reflection": {
+    "eventRef": {
+      "$ref": "event:sha256:f30409c51a78ed6906df6e53052bcb0fe52ae708ebd809bd2d52820fceb253ed"
+    },
+    "seq": 8,
+    "target": {
+      "group": "foreign.example",
+      "version": "v1alpha1",
+      "kind": "Artifact",
+      "name": "reflection"
+    },
+    "actor": {
+      "id": "session-key"
+    },
+    "spec": {
+      "type": "reflection",
+      "sessionBinding": {
+        "$ref": "event:sha256:80f70afeef3caa57646fd20afb95be9c3f2c03d38e091906de31838813dcc22e"
+      },
+      "content": {
+        "$ref": "cas:reflection"
+      },
+      "mediaType": "text/plain",
+      "completeness": "complete",
+      "sources": [
+        {
+          "$ref": "event:sha256:00e13ed7af55b27622f1d6eab5bec0147e68efe28dc2b12461117afa1a5ed40e"
+        }
+      ]
+    }
+  }
+}

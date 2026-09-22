@@ -51,8 +51,7 @@ defmodule R5eRecurse.Lifecycle do
 
       true ->
         kind =
-          if record["target"]["group"] == "recurse.r5e.io" and
-               record["target"]["version"] == "v1alpha1", do: kind, else: nil
+          if type?(record, kind), do: kind, else: nil
 
         with {:ok, next} <- reduce(state, kind, spec, record) do
           {:ok, %{next | sequence: seq, records: Map.put(next.records, id, record)}}
@@ -142,14 +141,18 @@ defmodule R5eRecurse.Lifecycle do
         {:error, :retry_reused_session}
 
       true ->
-        case get(state, binding) do
-          %{"target" => %{"kind" => "SessionBinding"}, "spec" => b} ->
-            if b["task"] == a.task["eventRef"] and b["generation"] == s["generation"],
-              do: :ok,
-              else: {:error, :binding_mismatch}
+        record = get(state, binding)
 
-          _ ->
+        cond do
+          not type?(record, "SessionBinding") ->
             {:error, :unknown_binding}
+
+          record["spec"]["task"] != a.task["eventRef"] or
+              record["spec"]["generation"] != s["generation"] ->
+            {:error, :binding_mismatch}
+
+          true ->
+            :ok
         end
     end
   end
@@ -161,14 +164,11 @@ defmodule R5eRecurse.Lifecycle do
     case get_in(binding, ["spec", "actorType"]) do
       "runtime_action" ->
         if a.task["spec"]["step"] == "act" and
-             Enum.any?(artifacts, fn
-               %{"target" => %{"kind" => "ActionResult"}, "spec" => result} ->
-                 result["sessionBinding"] == s["sessionBinding"] and result["assessment"] != nil and
-                   result["outcome"] == "succeeded" and
-                   get_in(get(state, result["toolCall"]) || %{}, ["target", "kind"]) == "ToolCall"
-
-               _ ->
-                 false
+             Enum.any?(artifacts, fn record ->
+               type?(record, "ActionResult") and
+                 record["spec"]["sessionBinding"] == s["sessionBinding"] and
+                 record["spec"]["assessment"] != nil and record["spec"]["outcome"] == "succeeded" and
+                 type?(get(state, record["spec"]["toolCall"]), "ToolCall", "gateway.r5e.io")
              end), do: :ok, else: {:error, :operational_assessment_required}
 
       "agent" ->
@@ -178,7 +178,7 @@ defmodule R5eRecurse.Lifecycle do
 
           not Enum.any?(
             artifacts,
-            &step_artifact?(&1, a.task["spec"]["step"], s["sessionBinding"])
+            &step_artifact?(&1, a.task["spec"]["step"], binding)
           ) ->
             {:error, :step_artifact_required}
 
@@ -193,7 +193,7 @@ defmodule R5eRecurse.Lifecycle do
 
   defp closure_valid(_, _, _), do: :ok
 
-  defp step_artifact?(%{"target" => %{"kind" => "Artifact"}, "spec" => s}, step, binding) do
+  defp step_artifact?(%{"spec" => s} = artifact, step, binding) do
     types = %{
       "produce" => ~w(work lesson),
       "review" => ["review_findings"],
@@ -202,8 +202,9 @@ defmodule R5eRecurse.Lifecycle do
       "evaluate" => ["evaluation"]
     }
 
-    s["type"] in Map.get(types, step, []) and s["sessionBinding"] == binding and
-      s["completeness"] == "complete"
+    type?(artifact, "Artifact") and type?(binding, "SessionBinding") and
+      same_actor?(artifact, binding) and s["type"] in Map.get(types, step, []) and
+      s["sessionBinding"] == binding["eventRef"] and s["completeness"] == "complete"
   end
 
   defp step_artifact?(_, _, _), do: false
@@ -213,7 +214,7 @@ defmodule R5eRecurse.Lifecycle do
     old = if earlier, do: get(state, earlier.binding)
     current = get(state, binding_ref)
 
-    old != nil and current != nil and
+    type?(old, "SessionBinding") and type?(current, "SessionBinding") and
       (old["eventRef"] == current["eventRef"] or
          old["spec"]["agentSession"] == current["spec"]["agentSession"] or
          old["spec"]["sessionKey"] == current["spec"]["sessionKey"])
@@ -238,7 +239,7 @@ defmodule R5eRecurse.Lifecycle do
       old.task["spec"]["id"] == spec["id"] ->
         {:error, :retry_reused_task}
 
-      get_in(decision || %{}, ["target", "kind"]) != "RecoveryDecision" ->
+      not type?(decision, "RecoveryDecision") ->
         {:error, :recovery_required}
 
       decision["spec"]["disposition"] != "retry" or decision["spec"]["task"] != earlier or
@@ -249,14 +250,14 @@ defmodule R5eRecurse.Lifecycle do
         observation["seq"] >= decision["seq"] or decision["seq"] >= record["seq"] ->
         {:error, :reconciliation_required}
 
-      get_in(observation, ["target", "kind"]) not in ~w(ActionResult ReconciliationObservation) ->
+      not (type?(observation, "ActionResult") or type?(observation, "ReconciliationObservation")) ->
         {:error, :reconciliation_required}
 
-      observation["target"]["kind"] == "ActionResult" and
+      type?(observation, "ActionResult") and
           observation["spec"]["sessionBinding"] != old.binding ->
         {:error, :reconciliation_mismatch}
 
-      observation["target"]["kind"] == "ReconciliationObservation" and
+      type?(observation, "ReconciliationObservation") and
           observation["spec"]["interruption"] != old.prior ->
         {:error, :reconciliation_mismatch}
 
@@ -266,6 +267,27 @@ defmodule R5eRecurse.Lifecycle do
   end
 
   defp retry_valid(_, _, _), do: :ok
+  @doc "Checks the complete Kind identity; similarly named foreign Kinds remain ordinary facts."
+  def type?(record, kind, group \\ "recurse.r5e.io", version \\ "v1alpha1")
+
+  def type?(
+        %{"target" => %{"group" => group, "version" => version, "kind" => kind}},
+        kind,
+        group,
+        version
+      ), do: true
+
+  def type?(_, _, _, _), do: false
+
+  @doc "Compares admitted actor IDs, without treating descriptive metadata as identity."
+  def same_actor?(left, right) do
+    id = actor_id(left)
+    is_binary(id) and id != "" and id == actor_id(right)
+  end
+
+  defp actor_id(%{"actor" => %{"id" => id}}), do: id
+  defp actor_id(_), do: nil
+
   def get(state, reference), do: state.records[ref(reference)]
   def ref(%{"$ref" => id}), do: id
   def ref(_), do: nil

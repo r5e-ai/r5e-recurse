@@ -6,7 +6,8 @@ defmodule R5eRecurse.LifecycleTest do
   defp fixtures,
     do: __DIR__ |> Path.join("fixtures/events/lifecycle.json") |> File.read!() |> Jason.decode!()
 
-  defp ref(id), do: %{"$ref" => "e:" <> id}
+  defp ref(id),
+    do: %{"$ref" => "event:sha256:" <> Base.encode16(:crypto.hash(:sha256, id), case: :lower)}
 
   defp event(kind, id, seq, spec, actor \\ "runtime"),
     do: %{
@@ -37,8 +38,8 @@ defmodule R5eRecurse.LifecycleTest do
     records = fixtures()
     assert {:ok, a} = L.replay(records)
     assert {:ok, ^a} = Enum.reduce(records, {:ok, %L{}}, fn r, {:ok, s} -> L.apply(s, r) end)
-    assert a.attempts["e:task"].status == "completed"
-    assert a.attempts["e:task"].task == hd(records)
+    assert a.attempts[L.ref(ref("task"))].status == "completed"
+    assert a.attempts[L.ref(ref("task"))].task == hd(records)
     assert D.reflection(a, ref("task")) == "available"
     assert D.artifact(a, ref("work")) == "produced"
   end
@@ -92,7 +93,7 @@ defmodule R5eRecurse.LifecycleTest do
     assert {:ok, failed} =
              L.apply(s, transition("failed", 3, "prepare", %{"sessionBinding" => nil}))
 
-    assert failed.attempts["e:task"].binding == nil
+    assert failed.attempts[L.ref(ref("task"))].binding == nil
     assert D.reflection(failed, ref("task")) == "pending"
 
     assert {:ok, s} =
@@ -119,7 +120,7 @@ defmodule R5eRecurse.LifecycleTest do
                })
              )
 
-    assert s.attempts["e:task"].status == "cancelled"
+    assert s.attempts[L.ref(ref("task"))].status == "cancelled"
   end
 
   test "retry preserves Node and requires newer reconciliation and new Task/session" do
@@ -160,9 +161,9 @@ defmodule R5eRecurse.LifecycleTest do
     assert {:error, :retry_reused_task} =
              L.apply(s, event("Task", "task-2", 9, Map.put(spec, "id", "task-1")))
 
-    bad = put_in(s.records["e:observation"]["seq"], 5)
+    bad = put_in(s.records[L.ref(ref("observation"))]["seq"], 5)
     assert {:error, :reconciliation_required} = L.apply(bad, event("Task", "task-2", 9, spec))
-    wrong = put_in(s.records["e:observation"]["spec"]["interruption"], ref("unrelated"))
+    wrong = put_in(s.records[L.ref(ref("observation"))]["spec"]["interruption"], ref("unrelated"))
     assert {:error, :reconciliation_mismatch} = L.apply(wrong, event("Task", "task-2", 9, spec))
     assert {:ok, s} = L.apply(s, event("Task", "task-2", 9, spec))
     gen = %{"bootId" => "boot-2", "runId" => "run-2"}
@@ -200,8 +201,8 @@ defmodule R5eRecurse.LifecycleTest do
                put_in(%{ready | "seq" => 13}, ["spec", "sessionBinding"], ref("binding-3"))
              )
 
-    assert s.attempts["e:task"].status == "interrupted"
-    assert s.attempts["e:task-2"].status == "ready"
+    assert s.attempts[L.ref(ref("task"))].status == "interrupted"
+    assert s.attempts[L.ref(ref("task-2"))].status == "ready"
   end
 
   test "review and acceptance are separate, exact-version facts and withdrawal blocks reuse" do
@@ -329,7 +330,7 @@ defmodule R5eRecurse.LifecycleTest do
     rows = fixtures() |> List.update_at(0, &put_in(&1, ["spec", "step"], "reflect"))
     rows = List.update_at(rows, 8, &put_in(&1, ["spec", "outputs"], [ref("reflection")]))
     assert {:ok, state} = L.replay(rows)
-    assert state.attempts["e:task"].status == "completed"
+    assert state.attempts[L.ref(ref("task"))].status == "completed"
     {:ok, state} = through(7)
     {:ok, state} = L.apply(state, transition("failed", 8, "reflecting"))
     assert D.reflection(state, ref("task")) == "pending"
@@ -347,7 +348,7 @@ defmodule R5eRecurse.LifecycleTest do
       )
 
     assert D.reflection(state, ref("task")) == "unavailable_acknowledged"
-    assert state.attempts["e:task"].status == "failed"
+    assert state.attempts[L.ref(ref("task"))].status == "failed"
   end
 
   test "same-provider review never advances acceptance" do
@@ -400,7 +401,12 @@ defmodule R5eRecurse.LifecycleTest do
 
     {:ok, state} = L.replay(rows)
     assert {:error, :operational_assessment_required} = L.apply(state, List.last(fixtures()))
-    {:ok, state} = L.apply(state, event("ToolCall", "tool", 8, %{}))
+
+    {:ok, state} =
+      L.apply(
+        state,
+        put_in(event("ToolCall", "tool", 8, %{}), ["target", "group"], "gateway.r5e.io")
+      )
 
     result = %{
       "sessionBinding" => ref("binding"),
@@ -417,7 +423,215 @@ defmodule R5eRecurse.LifecycleTest do
                transition("completed", 10, "reflecting", %{"outputs" => [ref("result")]})
              )
 
-    assert state.attempts["e:task"].status == "completed"
+    assert state.attempts[L.ref(ref("task"))].status == "completed"
     assert D.reflection(state, ref("task")) == "pending"
+  end
+
+  defp foreign_fixtures do
+    __DIR__ |> Path.join("fixtures/events/foreign-kinds.json") |> File.read!() |> Jason.decode!()
+  end
+
+  defp review_records do
+    producer = Enum.at(fixtures(), 2)["spec"]
+
+    reviewer =
+      Map.merge(producer, %{
+        "provider" => "codex",
+        "sessionKey" => "reviewer",
+        "agentSession" => ref("reviewer-span")
+      })
+
+    [
+      event("SessionBinding", "producer", 1, producer, "producer"),
+      event(
+        "Artifact",
+        "lesson",
+        2,
+        %{"type" => "lesson", "sessionBinding" => ref("producer"), "completeness" => "complete"},
+        "producer"
+      ),
+      event("SessionBinding", "reviewer", 3, reviewer, "reviewer"),
+      event(
+        "Artifact",
+        "findings",
+        4,
+        %{
+          "type" => "review_findings",
+          "sessionBinding" => ref("reviewer"),
+          "completeness" => "complete"
+        },
+        "reviewer"
+      ),
+      event(
+        "Review",
+        "review",
+        5,
+        %{
+          "target" => ref("lesson"),
+          "sessionBinding" => ref("reviewer"),
+          "findings" => ref("findings"),
+          "recommendation" => "accept"
+        },
+        "reviewer"
+      ),
+      event(
+        "Decision",
+        "decision",
+        6,
+        %{"target" => ref("lesson"), "review" => ref("review"), "disposition" => "accept"},
+        "operator"
+      )
+    ]
+  end
+
+  test "foreign bindings and artifacts cannot supply lifecycle evidence" do
+    negatives = foreign_fixtures()
+    rows = List.replace_at(fixtures(), 2, negatives["foreign_binding"])
+    assert {:error, :unknown_binding} = L.replay(rows)
+    rows = List.replace_at(fixtures(), 5, negatives["foreign_work"])
+    assert {:error, :step_artifact_required} = L.replay(rows)
+    rows = List.replace_at(fixtures(), 7, negatives["foreign_reflection"])
+    assert {:error, :reflection_required} = L.replay(rows)
+    {:ok, foreign_state} = L.replay([negatives["foreign_binding"], Enum.at(fixtures(), 7)])
+    refute D.actual_reflection?(foreign_state, ref("binding"), [Enum.at(fixtures(), 7)])
+
+    for {field, value} <- [{"version", "v999"}, {"kind", "Unrelated"}] do
+      rows = List.update_at(fixtures(), 2, &put_in(&1, ["target", field], value))
+      assert {:error, :unknown_binding} = L.replay(rows)
+    end
+  end
+
+  test "step output must carry the binding actor ID while descriptive metadata may differ" do
+    rows = List.update_at(fixtures(), 5, &put_in(&1, ["actor", "id"], "imposter"))
+    assert {:error, :step_artifact_required} = L.replay(rows)
+
+    rows =
+      fixtures()
+      |> List.update_at(5, &put_in(&1, ["actor", "label"], "work metadata"))
+      |> List.update_at(7, &put_in(&1, ["actor", "label"], "reflection metadata"))
+
+    assert {:ok, state} = L.replay(rows)
+    assert D.reflection(state, ref("task")) == "available"
+  end
+
+  test "every review join is qualified and bound to admitted actor IDs" do
+    rows = review_records()
+    assert {:ok, state} = L.replay(rows)
+    assert D.lesson_eligible?(state, ref("lesson"))
+
+    for index <- 0..5,
+        {field, value} <- [
+          {"group", "foreign.example"},
+          {"version", "v999"},
+          {"kind", "Unrelated"}
+        ] do
+      changed = List.update_at(rows, index, &put_in(&1, ["target", field], value))
+      assert {:ok, state} = L.replay(changed)
+      refute D.lesson_eligible?(state, ref("lesson")), "join #{index} accepted foreign #{field}"
+    end
+
+    for index <- [1, 3, 4] do
+      changed = List.update_at(rows, index, &put_in(&1, ["actor", "id"], "imposter"))
+      assert {:ok, state} = L.replay(changed)
+      refute D.lesson_eligible?(state, ref("lesson"))
+    end
+
+    producer = hd(rows)["spec"]
+
+    for field <- ["provider", "sessionKey", "agentSession"] do
+      changed = List.update_at(rows, 2, &put_in(&1, ["spec", field], producer[field]))
+      assert {:ok, state} = L.replay(changed)
+      refute D.lesson_eligible?(state, ref("lesson"))
+    end
+
+    changed =
+      Enum.with_index(rows)
+      |> Enum.map(fn {record, index} ->
+        put_in(record, ["actor", "label"], "metadata-#{index}")
+      end)
+
+    assert {:ok, state} = L.replay(changed)
+    assert D.lesson_eligible?(state, ref("lesson"))
+  end
+
+  test "foreign recovery decisions and reconciliation observations cannot authorize retry" do
+    prefix = Enum.take(fixtures(), 5) ++ [transition("interrupted", 6, "running")]
+
+    observation =
+      event("ReconciliationObservation", "observation", 7, %{"interruption" => ref("interrupted")})
+
+    decision =
+      event("RecoveryDecision", "recovery", 8, %{
+        "task" => ref("task"),
+        "interruption" => ref("interrupted"),
+        "observationRef" => ref("observation"),
+        "disposition" => "retry"
+      })
+
+    spec =
+      hd(fixtures())["spec"]
+      |> Map.merge(%{
+        "id" => "retry",
+        "earlierTask" => ref("task"),
+        "recoveryDecision" => ref("recovery")
+      })
+
+    retry = event("Task", "retry", 9, spec)
+    assert {:ok, _} = L.replay(prefix ++ [observation, decision, retry])
+
+    for {field, value} <- [
+          {"group", "foreign.example"},
+          {"version", "v999"},
+          {"kind", "Unrelated"}
+        ] do
+      assert {:error, :recovery_required} =
+               L.replay(
+                 prefix ++ [observation, put_in(decision, ["target", field], value), retry]
+               )
+
+      assert {:error, :reconciliation_required} =
+               L.replay(
+                 prefix ++ [put_in(observation, ["target", field], value), decision, retry]
+               )
+    end
+  end
+
+  test "only qualified ActionResult and gateway ToolCall records close runtime actions" do
+    rows =
+      fixtures()
+      |> Enum.take(7)
+      |> List.update_at(0, &put_in(&1, ["spec", "step"], "act"))
+      |> List.update_at(2, &put_in(&1, ["spec", "actorType"], "runtime_action"))
+
+    tool = event("ToolCall", "tool", 8, %{}) |> put_in(["target", "group"], "gateway.r5e.io")
+
+    result =
+      event("ActionResult", "result", 9, %{
+        "sessionBinding" => ref("binding"),
+        "toolCall" => ref("tool"),
+        "outcome" => "succeeded",
+        "assessment" => ref("assessment")
+      })
+
+    completion = transition("completed", 10, "reflecting", %{"outputs" => [ref("result")]})
+    assert {:ok, _} = L.replay(rows ++ [tool, result, completion])
+
+    for {field, value} <- [
+          {"group", "recurse.r5e.io"},
+          {"version", "v999"},
+          {"kind", "Unrelated"}
+        ] do
+      assert {:error, :operational_assessment_required} =
+               L.replay(rows ++ [put_in(tool, ["target", field], value), result, completion])
+    end
+
+    for {field, value} <- [
+          {"group", "foreign.example"},
+          {"version", "v999"},
+          {"kind", "Unrelated"}
+        ] do
+      assert {:error, :operational_assessment_required} =
+               L.replay(rows ++ [tool, put_in(result, ["target", field], value), completion])
+    end
   end
 end

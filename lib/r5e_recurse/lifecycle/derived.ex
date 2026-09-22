@@ -8,10 +8,9 @@ defmodule R5eRecurse.Lifecycle.Derived do
   alias R5eRecurse.Lifecycle
 
   def artifact(state, target) do
-    case Lifecycle.get(state, target) do
-      %{"target" => %{"kind" => "Artifact"}} -> advance(state, target)
-      _ -> {:error, :unknown_artifact}
-    end
+    if Lifecycle.type?(Lifecycle.get(state, target), "Artifact"),
+      do: advance(state, target),
+      else: {:error, :unknown_artifact}
   end
 
   defp advance(state, target) do
@@ -61,8 +60,10 @@ defmodule R5eRecurse.Lifecycle.Derived do
     p = (producer || %{})["spec"] || %{}
     r = (reviewer || %{})["spec"] || %{}
 
-    findings_valid?(findings, reviewer_ref, review) and
-      producer != nil and reviewer != nil and review["actor"] == reviewer["actor"] and
+    Lifecycle.type?(review, "Review") and Lifecycle.type?(artifact, "Artifact") and
+      Lifecycle.type?(producer, "SessionBinding") and Lifecycle.type?(reviewer, "SessionBinding") and
+      Lifecycle.same_actor?(artifact, producer) and Lifecycle.same_actor?(review, reviewer) and
+      findings_valid?(findings, reviewer_ref, review) and
       producer_ref != reviewer_ref and
       p["provider"] != nil and r["provider"] != nil and p["provider"] != r["provider"] and
       p["sessionKey"] != nil and r["sessionKey"] != nil and p["sessionKey"] != r["sessionKey"] and
@@ -71,12 +72,13 @@ defmodule R5eRecurse.Lifecycle.Derived do
   end
 
   defp findings_valid?(
-         %{"target" => %{"kind" => "Artifact"}, "spec" => f} = findings,
+         %{"spec" => f} = findings,
          binding,
          review
        ) do
-    f["type"] == "review_findings" and f["sessionBinding"] == binding and
-      f["completeness"] == "complete" and findings["actor"] == review["actor"] and
+    Lifecycle.type?(findings, "Artifact") and f["type"] == "review_findings" and
+      f["sessionBinding"] == binding and
+      f["completeness"] == "complete" and Lifecycle.same_actor?(findings, review) and
       findings["seq"] < review["seq"]
   end
 
@@ -86,10 +88,11 @@ defmodule R5eRecurse.Lifecycle.Derived do
     b = Lifecycle.get(state, binding)
 
     Enum.any?(artifacts, fn
-      %{"target" => %{"kind" => "Artifact"}, "spec" => s, "actor" => actor} ->
-        s["type"] == "reflection" and s["completeness"] == "complete" and
+      %{"spec" => s} = artifact ->
+        Lifecycle.type?(artifact, "Artifact") and Lifecycle.type?(b, "SessionBinding") and
+          s["type"] == "reflection" and s["completeness"] == "complete" and
           s["sessionBinding"] == binding and get_in(b || %{}, ["spec", "actorType"]) == "agent" and
-          actor == b["actor"] and actor != nil and s["content"] != nil
+          Lifecycle.same_actor?(artifact, b) and s["content"] != nil
 
       _ ->
         false
@@ -124,7 +127,7 @@ defmodule R5eRecurse.Lifecycle.Derived do
   def lesson_eligible?(state, target) do
     lesson = Lifecycle.get(state, target)
 
-    get_in(lesson || %{}, ["spec", "type"]) == "lesson" and
+    Lifecycle.type?(lesson, "Artifact") and get_in(lesson, ["spec", "type"]) == "lesson" and
       get_in(lesson, ["spec", "completeness"]) == "complete" and
       artifact(state, target) == "accepted" and
       not Enum.any?(records(state, "Artifact"), fn replacement ->
@@ -138,11 +141,7 @@ defmodule R5eRecurse.Lifecycle.Derived do
   defp records(state, kind) do
     state.records
     |> Map.values()
-    |> Enum.filter(
-      &(get_in(&1, ["target", "kind"]) == kind and
-          get_in(&1, ["target", "group"]) == "recurse.r5e.io" and
-          get_in(&1, ["target", "version"]) == "v1alpha1")
-    )
+    |> Enum.filter(&Lifecycle.type?(&1, kind))
     |> Enum.sort_by(& &1["seq"])
   end
 end
