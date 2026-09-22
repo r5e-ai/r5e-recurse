@@ -1,0 +1,65 @@
+{
+  "group": "recurse.r5e.io",
+  "version": "v1alpha1",
+  "kind": "LessonWithdrawal",
+  "substrate": "event",
+  "naming": {
+    "mode": "content"
+  },
+  "description": "The recorded actor submitted this LessonWithdrawal under the cited authority; operational claims remain scoped to the recorded evidence.",
+  "schema": {
+    "properties": {
+      "lesson": {
+        "type": "ref",
+        "ref": {
+          "event": [
+            "recurse.r5e.io/v1alpha1/Artifact"
+          ],
+          "outcome": "admitted"
+        }
+      },
+      "priorDecision": {
+        "type": "ref",
+        "ref": {
+          "event": [
+            "recurse.r5e.io/v1alpha1/Decision"
+          ],
+          "outcome": "admitted"
+        }
+      },
+      "reason": {
+        "type": "ref",
+        "ref": {
+          "bytes": true,
+          "retention": "public-record"
+        }
+      },
+      "replacement": {
+        "type": "ref",
+        "ref": {
+          "event": [
+            "recurse.r5e.io/v1alpha1/Artifact"
+          ],
+          "outcome": "admitted"
+        }
+      }
+    },
+    "required": [
+      "lesson",
+      "priorDecision",
+      "reason"
+    ],
+    "additionalProperties": false
+  },
+  "requiresAuthority": true,
+  "epistemicScope": {
+    "claims": [
+      "The recorded actor admitted these LessonWithdrawal fields at this chain position under the resolved authority."
+    ],
+    "doesNotClaim": [
+      "That descriptive fields prove model authorship, identity beyond the signing key, or events outside the recorded path.",
+      "That schema acceptance proves application workflow constraints or external execution."
+    ]
+  },
+  "predicates": []
+}

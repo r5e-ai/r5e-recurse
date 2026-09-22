@@ -1,0 +1,66 @@
+{
+  "group": "recurse.r5e.io",
+  "version": "v1alpha1",
+  "kind": "Decision",
+  "substrate": "event",
+  "naming": {
+    "mode": "content"
+  },
+  "description": "The recorded actor submitted this Decision under the cited authority; operational claims remain scoped to the recorded evidence.",
+  "schema": {
+    "properties": {
+      "target": {
+        "type": "ref",
+        "ref": {
+          "event": [
+            "recurse.r5e.io/v1alpha1/Artifact"
+          ],
+          "outcome": "admitted"
+        }
+      },
+      "review": {
+        "type": "ref",
+        "ref": {
+          "event": [
+            "recurse.r5e.io/v1alpha1/Review"
+          ],
+          "outcome": "admitted"
+        }
+      },
+      "disposition": {
+        "type": "string",
+        "enum": [
+          "accept",
+          "revise",
+          "decline",
+          "escalate"
+        ]
+      },
+      "rationale": {
+        "type": "ref",
+        "ref": {
+          "bytes": true,
+          "retention": "public-record"
+        }
+      }
+    },
+    "required": [
+      "target",
+      "review",
+      "disposition",
+      "rationale"
+    ],
+    "additionalProperties": false
+  },
+  "requiresAuthority": true,
+  "epistemicScope": {
+    "claims": [
+      "The recorded actor admitted these Decision fields at this chain position under the resolved authority."
+    ],
+    "doesNotClaim": [
+      "That descriptive fields prove model authorship, identity beyond the signing key, or events outside the recorded path.",
+      "That schema acceptance proves application workflow constraints or external execution."
+    ]
+  },
+  "predicates": []
+}

@@ -1,0 +1,25 @@
+{
+  "valid": {
+    "id": "example",
+    "graph": {
+      "$ref": "recurse.r5e.io/v1alpha1/Graph/example"
+    },
+    "objective": {
+      "$ref": "bytes:sha256:2222222222222222222222222222222222222222222222222222222222222222"
+    },
+    "acceptanceCriteria": {
+      "$ref": "bytes:sha256:2222222222222222222222222222222222222222222222222222222222222222"
+    }
+  },
+  "invalid": {
+    "graph": {
+      "$ref": "recurse.r5e.io/v1alpha1/Graph/example"
+    },
+    "objective": {
+      "$ref": "bytes:sha256:2222222222222222222222222222222222222222222222222222222222222222"
+    },
+    "acceptanceCriteria": {
+      "$ref": "bytes:sha256:2222222222222222222222222222222222222222222222222222222222222222"
+    }
+  }
+}

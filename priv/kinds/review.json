@@ -1,0 +1,76 @@
+{
+  "group": "recurse.r5e.io",
+  "version": "v1alpha1",
+  "kind": "Review",
+  "substrate": "event",
+  "naming": {
+    "mode": "content"
+  },
+  "description": "The recorded actor submitted this Review under the cited authority; operational claims remain scoped to the recorded evidence.",
+  "schema": {
+    "properties": {
+      "target": {
+        "type": "ref",
+        "ref": {
+          "event": [
+            "recurse.r5e.io/v1alpha1/Artifact"
+          ],
+          "outcome": "admitted"
+        }
+      },
+      "criteria": {
+        "type": "ref",
+        "ref": {
+          "bytes": true,
+          "retention": "public-record"
+        }
+      },
+      "sessionBinding": {
+        "type": "ref",
+        "ref": {
+          "event": [
+            "recurse.r5e.io/v1alpha1/SessionBinding"
+          ],
+          "outcome": "admitted"
+        }
+      },
+      "findings": {
+        "type": "ref",
+        "ref": {
+          "event": [
+            "recurse.r5e.io/v1alpha1/Artifact"
+          ],
+          "outcome": "admitted"
+        }
+      },
+      "recommendation": {
+        "type": "string",
+        "enum": [
+          "accept",
+          "revise",
+          "decline",
+          "escalate"
+        ]
+      }
+    },
+    "required": [
+      "target",
+      "criteria",
+      "sessionBinding",
+      "findings",
+      "recommendation"
+    ],
+    "additionalProperties": false
+  },
+  "requiresAuthority": true,
+  "epistemicScope": {
+    "claims": [
+      "The recorded actor admitted these Review fields at this chain position under the resolved authority."
+    ],
+    "doesNotClaim": [
+      "That descriptive fields prove model authorship, identity beyond the signing key, or events outside the recorded path.",
+      "That schema acceptance proves application workflow constraints or external execution."
+    ]
+  },
+  "predicates": []
+}

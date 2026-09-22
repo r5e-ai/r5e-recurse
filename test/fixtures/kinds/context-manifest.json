@@ -1,0 +1,101 @@
+{
+  "valid": {
+    "renderedInput": {
+      "$ref": "bytes:sha256:2222222222222222222222222222222222222222222222222222222222222222"
+    },
+    "parts": [
+      {
+        "source": {
+          "$ref": "event:sha256:3333333333333333333333333333333333333333333333333333333333333333"
+        },
+        "content": {
+          "$ref": "bytes:sha256:2222222222222222222222222222222222222222222222222222222222222222"
+        },
+        "provenance": "operator_instruction",
+        "required": true
+      }
+    ],
+    "projectionVersion": "example",
+    "budgets": {
+      "inputBytes": 1024
+    },
+    "omissions": [
+      {
+        "source": {
+          "$ref": "event:sha256:3333333333333333333333333333333333333333333333333333333333333333"
+        },
+        "reason": "example"
+      }
+    ],
+    "harnessConfiguration": [
+      {
+        "name": "example",
+        "digest": "example",
+        "provenance": "example"
+      }
+    ],
+    "overrides": [
+      {
+        "name": "example",
+        "reason": "example"
+      }
+    ],
+    "exclusions": [
+      {
+        "source": "example",
+        "reason": "example"
+      }
+    ],
+    "custody": "runtime-held",
+    "profile": "cooperative-local",
+    "signerReachability": "same-user-cooperative-limit"
+  },
+  "invalid": {
+    "parts": [
+      {
+        "source": {
+          "$ref": "event:sha256:3333333333333333333333333333333333333333333333333333333333333333"
+        },
+        "content": {
+          "$ref": "bytes:sha256:2222222222222222222222222222222222222222222222222222222222222222"
+        },
+        "provenance": "operator_instruction",
+        "required": true
+      }
+    ],
+    "projectionVersion": "example",
+    "budgets": {
+      "inputBytes": 1024
+    },
+    "omissions": [
+      {
+        "source": {
+          "$ref": "event:sha256:3333333333333333333333333333333333333333333333333333333333333333"
+        },
+        "reason": "example"
+      }
+    ],
+    "harnessConfiguration": [
+      {
+        "name": "example",
+        "digest": "example",
+        "provenance": "example"
+      }
+    ],
+    "overrides": [
+      {
+        "name": "example",
+        "reason": "example"
+      }
+    ],
+    "exclusions": [
+      {
+        "source": "example",
+        "reason": "example"
+      }
+    ],
+    "custody": "runtime-held",
+    "profile": "cooperative-local",
+    "signerReachability": "same-user-cooperative-limit"
+  }
+}

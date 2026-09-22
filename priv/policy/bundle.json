@@ -1,0 +1,9 @@
+{
+  "engine": "cedar",
+  "sources": [
+    {
+      "file": "base.cedar",
+      "sha256": "7ac379eb473302d43c6f53fcbb34b880cf1032fae593c0e0d5e6d4b8605bd526"
+    }
+  ]
+}

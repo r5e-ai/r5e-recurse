@@ -1,0 +1,19 @@
+{
+  "valid": {
+    "engine": "cedar",
+    "sourceRef": {
+      "$ref": "bytes:sha256:2222222222222222222222222222222222222222222222222222222222222222"
+    },
+    "governs": [
+      "recurse.r5e.io/v1alpha1/Graph"
+    ]
+  },
+  "invalid": {
+    "sourceRef": {
+      "$ref": "bytes:sha256:2222222222222222222222222222222222222222222222222222222222222222"
+    },
+    "governs": [
+      "recurse.r5e.io/v1alpha1/Graph"
+    ]
+  }
+}
