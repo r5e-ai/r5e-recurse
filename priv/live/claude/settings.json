@@ -1,0 +1,12 @@
+{
+  "disableAllHooks": true,
+  "enabledPlugins": {},
+  "env": {
+    "ANTHROPIC_BASE_URL": "http://gateway:4443",
+    "ANTHROPIC_CUSTOM_HEADERS": "Host: api.anthropic.com",
+    "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1",
+    "DISABLE_AUTOUPDATER": "1",
+    "API_TIMEOUT_MS": "60000",
+    "CLAUDE_CODE_MAX_RETRIES": "0"
+  }
+}
