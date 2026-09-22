@@ -38,6 +38,13 @@ defmodule R5eRecurse.DroppingProxy do
       :httpc.request(method, request, [autoredirect: false, autoretry: 0], body_format: :binary)
 
     case mode do
+      {:fail_history_after_post, state} ->
+        if method == :post, do: Agent.update(state, fn _ -> true end)
+
+        if method == :get and conn.request_path == "/events" and Agent.get(state, & &1),
+          do: Plug.Conn.send_resp(conn, 503, "history unavailable"),
+          else: Plug.Conn.send_resp(conn, status, response)
+
       :post_retry_after ->
         if method == :post,
           do: Plug.Conn.send_resp(conn, 503, "lost acknowledgement"),

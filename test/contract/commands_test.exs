@@ -145,6 +145,27 @@ defmodule R5eRecurse.CommandsTest do
     assert Agent.get(ctx.store, & &1.submissions) == 1
   end
 
+  test "managed lost acknowledgment closes boot gate while canonical lookup remains available",
+       ctx do
+    GenServer.stop(ctx.server)
+    {:ok, gate} = R5eRecurse.Boot.start_link(boundary: %{interrupted: fn -> {:ok, []} end})
+    assert :ok = R5eRecurse.Boot.reconcile(gate)
+    {:ok, server} = Commands.start_link(Keyword.put(ctx.opts, :boot_gate, gate))
+    on_exit(fn -> if Process.alive?(server), do: GenServer.stop(server) end)
+    Agent.update(ctx.store, &%{&1 | mode: :drop})
+    command = command(ctx)
+    assert {:outcome_unknown, _} = Commands.submit(server, command, signed(ctx, command))
+    refute R5eRecurse.Boot.mutation_allowed?(gate)
+
+    assert {:error, :boot_reconciliation_required} =
+             Commands.submit(server, command, signed(ctx, command))
+
+    assert {:existing, %{outcome: "admitted"}} =
+             Commands.lookup(server, caller(ctx), command["command_id"])
+
+    assert Agent.get(ctx.store, & &1.submissions) == 1
+  end
+
   test "lost acknowledgement resolves by canonical ID lookup with no fresh submission", ctx do
     Agent.update(ctx.store, &%{&1 | mode: :drop})
     command = command(ctx)

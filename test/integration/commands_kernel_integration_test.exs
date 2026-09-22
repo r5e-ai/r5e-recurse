@@ -43,12 +43,20 @@ defmodule R5eRecurse.CommandsKernelIntegrationTest do
     GenServer.stop(server)
     {:ok, before} = KernelClient.events_from(client, 1)
     # Retry-after proxy preserves GET history but loses the POST acknowledgement.
+    {:ok, gate} = R5eRecurse.Boot.start_link(boundary: %{interrupted: fn -> {:ok, []} end})
+    assert :ok = R5eRecurse.Boot.reconcile(gate)
+    opts = Keyword.put(opts, :boot_gate, gate)
     proxy = KernelClient.new(DroppingProxy.start!(kernel.url, :post_retry_after))
     {:ok, server} = Commands.start_link(Keyword.put(opts, :store, {KernelStore, proxy}))
     dropped = %{command | "command_id" => "lost"}
     {:ok, dropped_spec} = Commands.command_spec(dropped, caller)
 
     assert {:outcome_unknown, _} =
+             Commands.submit(server, dropped, sign(ctx, Envelope.target(), dropped_spec))
+
+    refute R5eRecurse.Boot.mutation_allowed?(gate)
+
+    assert {:error, :boot_reconciliation_required} =
              Commands.submit(server, dropped, sign(ctx, Envelope.target(), dropped_spec))
 
     assert {:existing, %{outcome: "admitted"}} = Commands.lookup(server, caller, "lost")
@@ -58,6 +66,29 @@ defmodule R5eRecurse.CommandsKernelIntegrationTest do
     GenServer.stop(restarted)
     assert {:ok, [event]} = KernelClient.events_from(client, List.last(before)["seq"] + 1)
     assert event["kind"] == "admission.granted"
+
+    # This transport fixture proves receipt/reference compatibility, not issuer revocation.
+    # Verify the actual canonical event and bound command before returning its reference.
+    boundary = %{
+      admit: fn :observation, expected_spec ->
+        with {:ok, records} <- KernelStore.history(client),
+             %{event: admitted, payload: payload} <-
+               Enum.find(records, &(&1.event["hash"] == event["hash"])),
+             true <- payload["outcome"] == "admitted" and payload["spec"] == expected_spec do
+          {:ok, %{kind: :observation, event_ref: "event:" <> admitted["hash"]}}
+        else
+          _ -> {:error, :unverified_observation}
+        end
+      end
+    }
+
+    {:ok, recovery_gate} = R5eRecurse.Boot.start_link(boundary: boundary)
+
+    assert {:ok, %{event_ref: actual_ref}} =
+             R5eRecurse.Boot.recover(recovery_gate, :observation, dropped_spec)
+
+    assert actual_ref == "event:" <> event["hash"]
+    refute R5eRecurse.Boot.mutation_allowed?(recovery_gate)
   end
 
   # Uses the actual pinned signer, only in this test's disposable container.

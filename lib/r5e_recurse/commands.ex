@@ -23,7 +23,8 @@ defmodule R5eRecurse.Commands do
         directory: directory,
         store: Keyword.fetch!(opts, :store),
         operators: Keyword.get(opts, :operator_keys, []),
-        index: nil
+        index: nil,
+        boot_gate: Keyword.get(opts, :boot_gate)
       }
 
       case refresh(state) do
@@ -59,6 +60,23 @@ defmodule R5eRecurse.Commands do
   end
 
   def handle_call({:submit, command, envelope}, _from, state) do
+    result =
+      if state.boot_gate do
+        try do
+          R5eRecurse.Boot.execute(state.boot_gate, fn ->
+            submit_command(command, envelope, state)
+          end)
+        catch
+          :exit, _ -> {:outcome_unknown, %{reason: :boot_gate_unavailable}}
+        end
+      else
+        submit_command(command, envelope, state)
+      end
+
+    {:reply, result, state}
+  end
+
+  defp submit_command(command, envelope, state) do
     with {:ok, verified} <- Envelope.authenticate(command, envelope, state.origin),
          :ok <- operator(verified, state),
          {:ok, state} <- refresh(state) do
@@ -91,10 +109,10 @@ defmodule R5eRecurse.Commands do
             admit(state, verified.spec, envelope, pending_path)
         end
 
-      {:reply, result, state}
+      result
     else
-      {:error, reason} -> {:reply, {:error, reason}, state}
-      _ -> {:reply, {:outcome_unknown, %{reason: :canonical_history_unavailable}}, state}
+      {:error, reason} -> {:error, reason}
+      _ -> {:outcome_unknown, %{reason: :canonical_history_unavailable}}
     end
   end
 
