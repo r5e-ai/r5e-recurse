@@ -7,7 +7,9 @@ defmodule R5eRecurse.Signer.Channel do
   and reauthenticate. A remote gateway needs a bridge owner that dies on disconnect.
   `handler.(binding, request)` is the separately implemented validating signer boundary.
   This transport does not establish Badge/delegation or request policy validity.
-  Wire format is packet-4 JSON. Secret provisioning is in-process only, never a CLI API.
+  Wire format is packet-4 JSON, capped at 8 MiB including authentication fields
+  and JSON escaping; Request separately caps decoded specBytes at 1 MiB.
+  A 4-second monotonic attempt deadline starts at full-packet arrival before queuing. Secret provisioning is in-process only, never a CLI API.
   """
   use GenServer
   alias R5eRecurse.SessionKeys
@@ -16,7 +18,11 @@ defmodule R5eRecurse.Signer.Channel do
   def rotate(server), do: GenServer.call(server, :rotate)
 
   def register(server, owner, generation, binding),
-    do: GenServer.call(server, {:register, owner, generation, binding})
+    do:
+      GenServer.call(
+        server,
+        {:register, owner, generation, binding, System.monotonic_time(:millisecond) + 4_000}
+      )
 
   def close(server, route), do: GenServer.call(server, {:close, route})
 
@@ -33,7 +39,7 @@ defmodule R5eRecurse.Signer.Channel do
              :binary,
              active: false,
              packet: 4,
-             packet_size: 1_048_576,
+             packet_size: 8 * 1_048_576,
              ifaddr: {:local, String.to_charlist(path)}
            ]),
          :ok <- File.chmod(path, 0o600) do
@@ -77,10 +83,10 @@ defmodule R5eRecurse.Signer.Channel do
     {:reply, %{path: s.path, secret: s.secret}, s}
   end
 
-  def handle_call({:register, owner, generation, binding}, _, s)
+  def handle_call({:register, owner, generation, binding, deadline}, _, s)
       when is_pid(owner) and is_map(binding) do
     with true <- Process.alive?(owner),
-         {:ok, true} <- SessionKeys.owned_by?(s.keys, generation, owner) do
+         {:ok, true} <- SessionKeys.owned_by_before(s.keys, generation, owner, deadline) do
       route = token()
       credential = token()
 
@@ -102,10 +108,14 @@ defmodule R5eRecurse.Signer.Channel do
 
   def handle_call({:close, route}, _, s), do: {:reply, :ok, drop(s, route)}
 
-  def handle_call({:wire, bytes}, _, s) do
-    case RecurseVerify.Canonical.decode_json(bytes) do
-      {:ok, message} when is_map(message) -> dispatch(message, s)
-      _ -> {:reply, %{"error" => "malformed"}, s}
+  def handle_call({:wire, bytes, deadline}, _, s) do
+    if System.monotonic_time(:millisecond) < deadline do
+      case RecurseVerify.Canonical.decode_json(bytes) do
+        {:ok, message} when is_map(message) -> dispatch(message, s, deadline)
+        _ -> {:reply, %{"error" => "malformed"}, s}
+      end
+    else
+      {:reply, %{"error" => "deadline"}, s}
     end
   end
 
@@ -116,17 +126,18 @@ defmodule R5eRecurse.Signer.Channel do
         routes: Map.new(s.routes, fn {id, b} -> {id, %{b | authenticated: false}} end)
     }
 
-  defp dispatch(message, s) do
+  defp dispatch(message, s, deadline) do
     required = ["secret", "route", "credential", "generation", "operation", "request"]
 
-    with true <- Enum.sort(Map.keys(message)) == Enum.sort(required),
+    with true <- System.monotonic_time(:millisecond) < deadline,
+         true <- Enum.sort(Map.keys(message)) == Enum.sort(required),
          true <- is_map(s.gateway) and Process.alive?(s.gateway.owner),
          true <- equal?(message["secret"], s.secret),
          {:ok, entry} <- Map.fetch(s.routes, message["route"]),
          true <- equal?(message["credential"], entry.credential),
          true <- message["generation"] == entry.generation,
          true <- Process.alive?(entry.owner),
-         {:ok, _} <- SessionKeys.public_key(s.keys, entry.generation) do
+         {:ok, _} <- SessionKeys.public_key_before(s.keys, entry.generation, deadline) do
       case message["operation"] do
         "authenticate" ->
           {:reply, %{"ok" => true}, put_in(s.routes[message["route"]].authenticated, true)}
@@ -135,7 +146,11 @@ defmodule R5eRecurse.Signer.Channel do
           result =
             try do
               s.handler.(
-                Map.merge(entry.binding, %{generation: entry.generation}),
+                Map.merge(entry.binding, %{
+                  generation: entry.generation,
+                  deadline: deadline,
+                  attempt_started_at: deadline - 4_000
+                }),
                 message["request"]
               )
             rescue
@@ -194,10 +209,11 @@ defmodule R5eRecurse.Signer.Channel do
         # One bounded request per connection; no unbounded peer processes or buffered frames.
         case :gen_tcp.recv(peer, 0, 1000) do
           {:ok, bytes} ->
+            deadline = System.monotonic_time(:millisecond) + 4_000
             # A call exit otherwise includes its arguments (and the wire secret) in
             # the linked acceptor crash report. Never propagate those arguments.
             try do
-              reply = GenServer.call(server, {:wire, bytes})
+              reply = GenServer.call(server, {:wire, bytes, deadline}, 5_000)
               :gen_tcp.send(peer, Jason.encode!(reply))
             rescue
               _ -> :ok

@@ -18,6 +18,7 @@ defmodule R5eRecurse.Policy.Presentation do
          {:ok, acyclic} <- acyclic(request) do
       context = %{
         "target_kind" => request.kind,
+        "managed_request_valid" => R5eRecurse.Policy.ManagedRequest.valid?(request, facts),
         "custody" => labels["custody"],
         "profile" => labels["profile"],
         "signer_reachability" => labels["signerReachability"],

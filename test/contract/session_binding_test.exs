@@ -43,6 +43,20 @@ defmodule R5eRecurse.SessionBindingTest do
              SessionBinding.admit(driver(), keys, first.generation, first_opts)
   end
 
+  test "core timestamp spellings survive credential and binding admission", ctx do
+    keys = start_supervised!(SessionKeys)
+    {:ok, key} = SessionKeys.create(keys, "timestamp", self())
+
+    opts =
+      options(ctx, keys, key, :producer,
+        not_before: "2020-01-01T00:00:00Z",
+        not_after: "2030-01-01T00:00:00.000000000-00:00"
+      )
+
+    assert {:ok, %{span: _, binding: _}} =
+             SessionBinding.admit(driver(), keys, key.generation, opts)
+  end
+
   test "agent requires provider; runtime action can bind without model provider", ctx do
     keys = start_supervised!(SessionKeys)
     {:ok, key} = SessionKeys.create(keys, "agent", self())
@@ -163,7 +177,7 @@ defmodule R5eRecurse.SessionBindingTest do
     assert is_binary(id) and is_binary(ref)
   end
 
-  defp options(ctx, keys, key, role \\ :producer) do
+  defp options(ctx, keys, key, role \\ :producer, terms \\ []) do
     {:ok, role_kinds} = Authority.Kinds.for_role(role)
 
     parent =
@@ -185,6 +199,7 @@ defmodule R5eRecurse.SessionBindingTest do
       operator_badge: parent["eventRef"]
     ]
 
+    common = Keyword.merge(common, terms)
     {:ok, bp} = Authority.deployment_badge(common)
     {:ok, dp} = Authority.session_endorsement(common)
     badge = issue(ctx.operator, bp, keys, key)

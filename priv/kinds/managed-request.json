@@ -93,6 +93,36 @@
       },
       "operationId": {
         "type": "string"
+      },
+      "harnessInputs": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "fieldPath": {
+              "type": "string"
+            },
+            "digest": {
+              "type": "string"
+            },
+            "provenance": {
+              "type": "ref",
+              "ref": {
+                "event": [
+                  "recurse.r5e.io/v1alpha1/ContextManifest",
+                  "recurse.r5e.io/v1alpha1/Artifact"
+                ],
+                "outcome": "admitted"
+              }
+            }
+          },
+          "required": [
+            "fieldPath",
+            "digest",
+            "provenance"
+          ],
+          "additionalProperties": false
+        }
       }
     },
     "required": [

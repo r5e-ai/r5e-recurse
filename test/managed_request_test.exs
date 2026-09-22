@@ -124,8 +124,7 @@ defmodule R5eRecurse.ManagedRequestTest do
              }
            ]
 
-    # Schema gap: this evidence is deliberately NOT claimed to be canonically recorded.
-    refute Map.has_key?(r.spec, "harnessInputs")
+    assert r.spec["harnessInputs"] == r.harness_inputs
 
     assert {:error, :unidentifiable_input} =
              ManagedRequest.build(%{opts() | first_request: false, input_path: "/missing"})
@@ -176,6 +175,39 @@ defmodule R5eRecurse.ManagedRequestTest do
                    | :invalid
                  ]
              })
+  end
+
+  test "canonical inventory preserves pointer bytes and rejects ambiguity" do
+    provenance = %{"$ref" => opts().session_binding}
+    descriptor = fn path -> %{"fieldPath" => path, "provenance" => provenance} end
+
+    body =
+      Jason.encode!(%{
+        "input" => "hello\nworld",
+        "a/b" => "slash",
+        "a" => %{"b" => "nested"},
+        "é" => "composed",
+        "é" => "decomposed"
+      })
+
+    o = %{opts(body) | input_path: "/input"}
+    paths = Enum.sort(["/a~1b", "/a/b", "/é", "/é"])
+
+    assert {:ok, result} =
+             ManagedRequest.build(%{o | harness_inputs: Enum.map(paths, descriptor)})
+
+    assert Enum.map(result.spec["harnessInputs"], & &1["fieldPath"]) == paths
+    assert result.bodies.inbound == body
+
+    assert Enum.map(result.spec["harnessInputs"], & &1["digest"]) ==
+             Enum.map(["nested", "slash", "decomposed", "composed"], &hash/1)
+
+    for paths <- [["/a~1b", "/a/b"], ["/a/b", "/a/b"], ["/input"]] do
+      assert {:error, :invalid_harness_input} =
+               ManagedRequest.build(%{o | harness_inputs: Enum.map(paths, descriptor)})
+    end
+
+    assert {:ok, %{spec: %{"harnessInputs" => []}}} = ManagedRequest.build(o)
   end
 
   defp hash(bytes), do: "sha256:" <> Base.encode16(:crypto.hash(:sha256, bytes), case: :lower)

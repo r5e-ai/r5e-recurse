@@ -7,9 +7,8 @@ defmodule R5eRecurse.ManagedRequest do
   ContextManifest `rendered_input`, an RFC 6901 `input_path`, routing metadata,
   header pairs, and `harness_inputs` descriptors containing `fieldPath` and
   `provenance`. Provenance is an admitted event reference supplied by the adapter.
-  Harness provenance is returned separately because the current Kind has no
-  field for it. It is NOT included in the canonical candidate; integration must
-  resolve this schema gap before claiming recorded harness provenance (T047).
+  Harness provenance is recorded in canonical harnessInputs. The builder checks
+  exact strings, syntax and ordering, not source admission or inventory completeness.
   The caller must resolve those refs and the rendered bytes from verified records;
   syntactic ref validation here does not establish admission or authority.
 
@@ -29,6 +28,9 @@ defmodule R5eRecurse.ManagedRequest do
          {:ok, input} <- input(json, opts.input_path),
          :ok <- first_input(opts.first_request, input, opts.rendered_input),
          {:ok, harness} <- harness_inputs(json, opts.harness_inputs),
+         true <-
+           R5eRecurse.HarnessInputs.valid?(harness, opts.input_path) or
+             {:error, :invalid_harness_input},
          {:ok, headers} <- semantic_headers(opts.headers) do
       digest = digest(opts.inbound_body)
       body_ref = %{"$ref" => "bytes:" <> digest}
@@ -45,6 +47,7 @@ defmodule R5eRecurse.ManagedRequest do
         "upstream" => opts.upstream,
         "transport" => opts.transport,
         "semanticHeaders" => headers,
+        "harnessInputs" => harness,
         "operationId" => opts.operation_id
       }
 

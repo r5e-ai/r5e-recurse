@@ -12,7 +12,7 @@ defmodule R5eRecurse.Authority do
   not submit credentials or enable routes.
   """
   alias R5eRecurse.Authority.Kinds
-  alias RecurseVerify.{Canonical, DSSE}
+  alias RecurseVerify.{Canonical, DSSE, Instant}
   @payload_type "application/vnd.r5e.admission-request+json;v=1"
 
   def task_creation(opts) do
@@ -68,9 +68,7 @@ defmodule R5eRecurse.Authority do
     parent = Keyword.get(opts, :operator_badge)
 
     with true <- is_binary(public) and byte_size(public) == 32,
-         {:ok, start, _} <- DateTime.from_iso8601(first),
-         {:ok, stop, _} <- DateTime.from_iso8601(last),
-         :lt <- DateTime.compare(start, stop),
+         {:ok, :lt} <- Instant.compare(first, last),
          true <- Enum.all?(Map.values(scope), &(is_binary(&1) and byte_size(&1) > 0)),
          true <- is_nil(parent) or (is_binary(parent) and String.starts_with?(parent, "event:")) do
       spec = %{

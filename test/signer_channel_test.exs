@@ -55,6 +55,35 @@ defmodule R5eRecurse.SignerChannelTest do
     Jason.decode!(bytes)
   end
 
+  test "frame budget accommodates JSON escaping around the 1 MiB decoded spec limit", c do
+    assert %{"ok" => true} = request(c, "authenticate")
+    # A valid JSON string containing many escaped quotes: the outer packet escapes
+    # the backslashes again. This crosses 1 MiB without exceeding the frame cap.
+    spec = Jason.encode!(%{"x" => String.duplicate("\"", 262_140)})
+    assert byte_size(spec) <= 1_048_576
+    wire = %{"kind" => "example", "specBytes" => spec, "authority" => []}
+    assert byte_size(Jason.encode!(wire)) > 1_048_576
+    assert %{"ok" => "test-envelope"} = request(c, "sign", %{"request" => wire})
+    assert_receive {:handled, %{deadline: deadline}, ^wire}
+    assert deadline > System.monotonic_time(:millisecond)
+  end
+
+  test "frames above 8 MiB are refused before the handler", c do
+    {:ok, socket} =
+      :gen_tcp.connect(
+        {:local, String.to_charlist(c.provision.path)},
+        0,
+        [:binary, active: false, packet: 0],
+        1_000
+      )
+
+    assert :ok = :gen_tcp.send(socket, <<8 * 1_048_576 + 1::unsigned-big-32>>)
+    assert {:error, reason} = :gen_tcp.recv(socket, 0, 2_000)
+    assert reason in [:closed, :econnreset]
+    :gen_tcp.close(socket)
+    refute_receive {:handled, _, _}, 0
+  end
+
   test "secret, live credential and explicit authentication are all required", c do
     status = inspect(:sys.get_status(c.channel), limit: :infinity)
     refute status =~ c.provision.secret

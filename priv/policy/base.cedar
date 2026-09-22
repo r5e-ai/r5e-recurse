@@ -2,6 +2,7 @@
 permit(principal, action == Recurse::Action::"admit", resource)
 when {
   context.authority_present &&
+  context.managed_request_valid &&
   context.node_acyclic &&
   context.task_scope_valid &&
   (context.target_kind != "SessionBinding" && context.target_kind != "ContextManifest" ||
