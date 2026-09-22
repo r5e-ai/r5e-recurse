@@ -3,5 +3,6 @@
 /.r5e/
 .DS_Store
 
+__pycache__/
 # Operator-local specification tooling; generated specs remain public.
 /.specify
