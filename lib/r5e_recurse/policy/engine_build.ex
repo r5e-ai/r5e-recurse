@@ -1,7 +1,7 @@
 defmodule R5eRecurse.Policy.EngineBuild do
   @moduledoc "Measurements of the deployed adapter, its presentation code, and kernel Cedar NIF."
   @compile {:no_warn_undefined, [R5e.Policy.EngineBuild, R5e.Canonical, R5e.CAS, R5e.RefIndex]}
-  @modules [R5eRecurse.Policy, R5eRecurse.Policy.Presentation, __MODULE__]
+  @modules [R5eRecurse.Policy, R5eRecurse.Policy.Presentation, R5eRecurse.Authority, __MODULE__]
 
   def media_type, do: "application/vnd.r5e.engine-build+json"
 

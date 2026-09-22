@@ -3,6 +3,7 @@ permit(principal, action == Recurse::Action::"admit", resource)
 when {
   context.authority_present &&
   context.node_acyclic &&
+  context.task_scope_valid &&
   (context.target_kind != "SessionBinding" && context.target_kind != "ContextManifest" ||
     context.custody == "runtime-held" &&
     context.profile == "cooperative-local" &&
