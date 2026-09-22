@@ -32,11 +32,25 @@ lab procedure, your evidence schema, your legislature.
 | [docs/architecture.md](docs/architecture.md) | Three planes, the Node → Task → Session → Artifact chain, the virtual substrate, legible mediation. |
 | [docs/extending.md](docs/extending.md) | How this repo extends core — written as the template for third parties. |
 
-Implementation is greenfield-pending on top of r5e-kernel; prior art being
-consolidated and ported (not reconstructed): `rai_runtime` (decomposition,
+Implementation is starting on top of r5e-kernel, informed by prior art in `rai_runtime` (decomposition,
 GAN review, lifecycle state machines) and the orchestration layers of
 `r5e-enterprise`.
 
 ## Status and license
 
-Docs-first skeleton, 2026-07. License intent per ADR-0004: **AGPLv3**.
+As of 2026-09-22, the OTP application scaffold compiles with an empty
+supervision tree. Runtime orchestration remains under construction in
+[R5E-208 through R5E-211](https://linear.app/r5e/issue/R5E-208).
+
+| Toolchain | Pinned version |
+| --- | --- |
+| Elixir | 1.19.5 (OTP 28 build) |
+| Erlang/OTP | 28.5 |
+
+Run `mix deps.get`, then `MIX_ENV=test mix compile --warnings-as-errors` and
+`MIX_ENV=test mix test --exclude live --exclude perf`. Container-backed kernel
+tests opt in through `R5E_TEST_KERNEL_IMAGE`; they start fresh ephemeral chains
+and never mount a development data directory. Real subscription tests require
+`R5E_LIVE=1` separately.
+
+License intent per ADR-0004: **AGPLv3**.
