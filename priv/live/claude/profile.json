@@ -1,0 +1,30 @@
+{
+  "client": "claude",
+  "version": "2.1.223 (Claude Code)",
+  "auth_mode": "claude_ai_subscription",
+  "argv": [
+    "claude",
+    "--safe-mode",
+    "--setting-sources",
+    "",
+    "--settings",
+    "/probe/settings.json",
+    "--tools",
+    "",
+    "--strict-mcp-config",
+    "--mcp-config",
+    "{\"mcpServers\":{}}",
+    "--no-chrome",
+    "--no-session-persistence",
+    "--permission-mode",
+    "dontAsk",
+    "--model",
+    "claude-sonnet-4-6",
+    "--output-format",
+    "json",
+    "-p"
+  ],
+  "config_files": [
+    "settings.json"
+  ]
+}
