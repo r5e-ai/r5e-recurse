@@ -1,0 +1,39 @@
+{
+    "default_upstream_host": null,
+    "fallback_unknown_hosts": false,
+    "format": "r5e-recurse-upstream-selection/v1",
+    "observed_at": "2026-09-22T02:47:49.147650Z",
+    "routes": {
+        "claude": {
+            "api_format": "anthropic_messages",
+            "auth_mode": "passthrough",
+            "enabled": true,
+            "inbound_host": "api.anthropic.com",
+            "path": "/v1/messages",
+            "provider": "anthropic",
+            "scheme": "https",
+            "transport_modes": [
+                "https-sse"
+            ],
+            "upstream_host": "api.anthropic.com",
+            "upstream_port": 443
+        },
+        "codex": {
+            "api_format": "openai_responses",
+            "auth_mode": "bearer_plus_chatgpt_account_id",
+            "enabled": true,
+            "inbound_host": "chatgpt.com",
+            "path": "/backend-api/codex/responses",
+            "provider": "openai_chatgpt",
+            "scheme": "https",
+            "transport_modes": [
+                "https-sse"
+            ],
+            "upstream_host": "chatgpt.com",
+            "upstream_port": 443
+        }
+    },
+    "selection_basis": "running gateway ProxyRouter.select_upstream/2; Host-based routing",
+    "self_host_result": "not_configured",
+    "unknown_host_result": "not_configured"
+}
