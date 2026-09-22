@@ -13,7 +13,7 @@ defmodule R5eRecurse.MixProject do
   end
 
   def application,
-    do: [extra_applications: [:logger, :crypto, :inets], mod: {R5eRecurse.Application, []}]
+    do: [extra_applications: [:logger, :crypto, :inets, :ssl], mod: {R5eRecurse.Application, []}]
 
   defp elixirc_paths(:test), do: ["lib", "test/support"]
   defp elixirc_paths(_), do: ["lib"]
