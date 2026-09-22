@@ -34,7 +34,7 @@ defmodule R5eRecurse.PolicyBaseTest do
     setup_fixture()
   end
 
-  def setup_fixture do
+  def setup_fixture(session_kind \\ nil) do
     previous =
       Map.new([:data_dir, :policy, :seed_kernel_policy], &{&1, Application.get_env(:r5e, &1)})
 
@@ -53,7 +53,7 @@ defmodule R5eRecurse.PolicyBaseTest do
       File.rm_rf!(dir)
     end)
 
-    {:ok, fixture()}
+    {:ok, fixture(session_kind)}
   end
 
   test "real signed admission evaluates the admitted policy and retains upstream proof", ctx do
@@ -420,7 +420,7 @@ defmodule R5eRecurse.PolicyBaseTest do
     end
   end
 
-  def fixture do
+  def fixture(session_kind \\ nil) do
     kinds =
       Path.wildcard(Path.join(@root, "priv/kinds/*.json"))
       |> Enum.map(&(File.read!(&1) |> Jason.decode!()))
@@ -429,15 +429,17 @@ defmodule R5eRecurse.PolicyBaseTest do
       assert {:ok, _} = admit("core.r5e.io", "v1", "KindDefinition", nil, kind, :node, [])
     end
 
-    session_kind = %{
-      "group" => "gateway.r5e.io",
-      "version" => "v1alpha1",
-      "kind" => "AgentSession",
-      "substrate" => "resource",
-      "naming" => %{"mode" => "server"},
-      "schema" => %{"properties" => %{}, "required" => [], "additionalProperties" => false},
-      "predicates" => []
-    }
+    session_kind =
+      session_kind ||
+        %{
+          "group" => "gateway.r5e.io",
+          "version" => "v1alpha1",
+          "kind" => "AgentSession",
+          "substrate" => "resource",
+          "naming" => %{"mode" => "server"},
+          "schema" => %{"properties" => %{}, "required" => [], "additionalProperties" => false},
+          "predicates" => []
+        }
 
     assert {:ok, _} = admit("core.r5e.io", "v1", "KindDefinition", nil, session_kind, :node, [])
 
