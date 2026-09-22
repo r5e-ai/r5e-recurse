@@ -1,0 +1,61 @@
+{
+  "group": "recurse.r5e.io",
+  "version": "v1alpha1",
+  "kind": "Node",
+  "substrate": "resource",
+  "naming": {
+    "mode": "server"
+  },
+  "description": "The recorded actor submitted this Node under the cited authority; operational claims remain scoped to the recorded evidence.",
+  "schema": {
+    "properties": {
+      "id": {
+        "type": "string"
+      },
+      "graph": {
+        "type": "ref",
+        "ref": {
+          "kind": "recurse.r5e.io/v1alpha1/Graph"
+        }
+      },
+      "objective": {
+        "type": "ref",
+        "ref": {
+          "bytes": true,
+          "retention": "public-record"
+        }
+      },
+      "acceptanceCriteria": {
+        "type": "ref",
+        "ref": {
+          "bytes": true,
+          "retention": "public-record"
+        }
+      },
+      "parent": {
+        "type": "ref",
+        "ref": {
+          "kind": "recurse.r5e.io/v1alpha1/Node"
+        }
+      }
+    },
+    "required": [
+      "id",
+      "graph",
+      "objective",
+      "acceptanceCriteria"
+    ],
+    "additionalProperties": false
+  },
+  "requiresAuthority": true,
+  "epistemicScope": {
+    "claims": [
+      "The recorded actor admitted these Node fields at this chain position under the resolved authority."
+    ],
+    "doesNotClaim": [
+      "That descriptive fields prove model authorship, identity beyond the signing key, or events outside the recorded path.",
+      "That schema acceptance proves application workflow constraints or external execution."
+    ]
+  },
+  "predicates": []
+}

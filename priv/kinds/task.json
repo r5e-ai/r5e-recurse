@@ -1,0 +1,93 @@
+{
+  "group": "recurse.r5e.io",
+  "version": "v1alpha1",
+  "kind": "Task",
+  "substrate": "resource",
+  "naming": {
+    "mode": "server"
+  },
+  "description": "The recorded actor submitted this Task under the cited authority; operational claims remain scoped to the recorded evidence.",
+  "schema": {
+    "properties": {
+      "id": {
+        "type": "string"
+      },
+      "node": {
+        "type": "ref",
+        "ref": {
+          "kind": "recurse.r5e.io/v1alpha1/Node"
+        }
+      },
+      "delegatedBy": {
+        "type": "string",
+        "pattern": "key:ed25519:sha256:[0-9a-f]{64}"
+      },
+      "delegationRef": {
+        "type": "ref",
+        "ref": {
+          "event": [
+            "core.r5e.io/v1/Endorsement"
+          ],
+          "outcome": "admitted"
+        }
+      },
+      "step": {
+        "type": "string",
+        "enum": [
+          "produce",
+          "review",
+          "reflect",
+          "lesson_review",
+          "evaluate",
+          "act"
+        ]
+      },
+      "target": {
+        "type": "ref",
+        "ref": {
+          "event": [
+            "recurse.r5e.io/v1alpha1/Artifact"
+          ],
+          "outcome": "admitted"
+        }
+      },
+      "earlierTask": {
+        "type": "ref",
+        "ref": {
+          "event": [
+            "recurse.r5e.io/v1alpha1/Task"
+          ],
+          "outcome": "admitted"
+        }
+      },
+      "recoveryDecision": {
+        "type": "ref",
+        "ref": {
+          "event": [
+            "recurse.r5e.io/v1alpha1/RecoveryDecision"
+          ],
+          "outcome": "admitted"
+        }
+      }
+    },
+    "required": [
+      "id",
+      "node",
+      "delegatedBy",
+      "delegationRef",
+      "step"
+    ],
+    "additionalProperties": false
+  },
+  "requiresAuthority": true,
+  "epistemicScope": {
+    "claims": [
+      "The recorded actor admitted these Task fields at this chain position under the resolved authority."
+    ],
+    "doesNotClaim": [
+      "That descriptive fields prove model authorship, identity beyond the signing key, or events outside the recorded path.",
+      "That schema acceptance proves application workflow constraints or external execution."
+    ]
+  },
+  "predicates": []
+}

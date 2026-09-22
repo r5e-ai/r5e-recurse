@@ -1,0 +1,71 @@
+{
+  "valid": {
+    "task": {
+      "$ref": "event:sha256:3333333333333333333333333333333333333333333333333333333333333333"
+    },
+    "agentSession": {
+      "$ref": "gateway.r5e.io/v1alpha1/AgentSession/example"
+    },
+    "agentSessionAdmission": {
+      "$ref": "event:sha256:3333333333333333333333333333333333333333333333333333333333333333"
+    },
+    "sessionKey": "key:ed25519:sha256:1111111111111111111111111111111111111111111111111111111111111111",
+    "badge": {
+      "$ref": "event:sha256:3333333333333333333333333333333333333333333333333333333333333333"
+    },
+    "delegation": {
+      "$ref": "event:sha256:3333333333333333333333333333333333333333333333333333333333333333"
+    },
+    "generation": {
+      "bootId": "example",
+      "runId": "example"
+    },
+    "role": "example",
+    "actorType": "agent",
+    "harness": "example",
+    "harnessVersion": "example",
+    "contextManifest": {
+      "$ref": "event:sha256:3333333333333333333333333333333333333333333333333333333333333333"
+    },
+    "workspace": {
+      "description": "example",
+      "digest": "example"
+    },
+    "custody": "runtime-held",
+    "profile": "cooperative-local",
+    "signerReachability": "same-user-cooperative-limit"
+  },
+  "invalid": {
+    "agentSession": {
+      "$ref": "gateway.r5e.io/v1alpha1/AgentSession/example"
+    },
+    "agentSessionAdmission": {
+      "$ref": "event:sha256:3333333333333333333333333333333333333333333333333333333333333333"
+    },
+    "sessionKey": "key:ed25519:sha256:1111111111111111111111111111111111111111111111111111111111111111",
+    "badge": {
+      "$ref": "event:sha256:3333333333333333333333333333333333333333333333333333333333333333"
+    },
+    "delegation": {
+      "$ref": "event:sha256:3333333333333333333333333333333333333333333333333333333333333333"
+    },
+    "generation": {
+      "bootId": "example",
+      "runId": "example"
+    },
+    "role": "example",
+    "actorType": "agent",
+    "harness": "example",
+    "harnessVersion": "example",
+    "contextManifest": {
+      "$ref": "event:sha256:3333333333333333333333333333333333333333333333333333333333333333"
+    },
+    "workspace": {
+      "description": "example",
+      "digest": "example"
+    },
+    "custody": "runtime-held",
+    "profile": "cooperative-local",
+    "signerReachability": "same-user-cooperative-limit"
+  }
+}

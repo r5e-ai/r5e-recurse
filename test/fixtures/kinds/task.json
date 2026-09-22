@@ -1,0 +1,23 @@
+{
+  "valid": {
+    "id": "example",
+    "node": {
+      "$ref": "recurse.r5e.io/v1alpha1/Node/example"
+    },
+    "delegatedBy": "key:ed25519:sha256:1111111111111111111111111111111111111111111111111111111111111111",
+    "delegationRef": {
+      "$ref": "event:sha256:3333333333333333333333333333333333333333333333333333333333333333"
+    },
+    "step": "produce"
+  },
+  "invalid": {
+    "node": {
+      "$ref": "recurse.r5e.io/v1alpha1/Node/example"
+    },
+    "delegatedBy": "key:ed25519:sha256:1111111111111111111111111111111111111111111111111111111111111111",
+    "delegationRef": {
+      "$ref": "event:sha256:3333333333333333333333333333333333333333333333333333333333333333"
+    },
+    "step": "produce"
+  }
+}

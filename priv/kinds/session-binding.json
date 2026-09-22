@@ -1,0 +1,171 @@
+{
+  "group": "recurse.r5e.io",
+  "version": "v1alpha1",
+  "kind": "SessionBinding",
+  "substrate": "event",
+  "naming": {
+    "mode": "content"
+  },
+  "description": "The recorded actor submitted this SessionBinding under the cited authority; operational claims remain scoped to the recorded evidence.",
+  "schema": {
+    "properties": {
+      "task": {
+        "type": "ref",
+        "ref": {
+          "event": [
+            "recurse.r5e.io/v1alpha1/Task"
+          ],
+          "outcome": "admitted"
+        }
+      },
+      "agentSession": {
+        "type": "ref",
+        "ref": {
+          "kind": "gateway.r5e.io/v1alpha1/AgentSession"
+        }
+      },
+      "agentSessionAdmission": {
+        "type": "ref",
+        "ref": {
+          "event": [
+            "gateway.r5e.io/v1alpha1/AgentSession"
+          ],
+          "outcome": "admitted"
+        }
+      },
+      "sessionKey": {
+        "type": "string",
+        "pattern": "key:ed25519:sha256:[0-9a-f]{64}"
+      },
+      "badge": {
+        "type": "ref",
+        "ref": {
+          "event": [
+            "core.r5e.io/v1/Badge"
+          ],
+          "outcome": "admitted"
+        }
+      },
+      "delegation": {
+        "type": "ref",
+        "ref": {
+          "event": [
+            "core.r5e.io/v1/Endorsement"
+          ],
+          "outcome": "admitted"
+        }
+      },
+      "generation": {
+        "type": "object",
+        "properties": {
+          "bootId": {
+            "type": "string"
+          },
+          "runId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "bootId",
+          "runId"
+        ],
+        "additionalProperties": false
+      },
+      "role": {
+        "type": "string"
+      },
+      "actorType": {
+        "type": "string",
+        "enum": [
+          "agent",
+          "runtime_action"
+        ]
+      },
+      "provider": {
+        "type": "string"
+      },
+      "model": {
+        "type": "string"
+      },
+      "harness": {
+        "type": "string"
+      },
+      "harnessVersion": {
+        "type": "string"
+      },
+      "contextManifest": {
+        "type": "ref",
+        "ref": {
+          "event": [
+            "recurse.r5e.io/v1alpha1/ContextManifest"
+          ],
+          "outcome": "admitted"
+        }
+      },
+      "workspace": {
+        "type": "object",
+        "properties": {
+          "description": {
+            "type": "string"
+          },
+          "digest": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "description",
+          "digest"
+        ],
+        "additionalProperties": false
+      },
+      "custody": {
+        "type": "string",
+        "enum": [
+          "runtime-held"
+        ]
+      },
+      "profile": {
+        "type": "string",
+        "enum": [
+          "cooperative-local"
+        ]
+      },
+      "signerReachability": {
+        "type": "string",
+        "enum": [
+          "same-user-cooperative-limit"
+        ]
+      }
+    },
+    "required": [
+      "task",
+      "agentSession",
+      "agentSessionAdmission",
+      "sessionKey",
+      "badge",
+      "delegation",
+      "generation",
+      "role",
+      "actorType",
+      "harness",
+      "harnessVersion",
+      "contextManifest",
+      "workspace",
+      "custody",
+      "profile",
+      "signerReachability"
+    ],
+    "additionalProperties": false
+  },
+  "requiresAuthority": true,
+  "epistemicScope": {
+    "claims": [
+      "The recorded actor admitted these SessionBinding fields at this chain position under the resolved authority."
+    ],
+    "doesNotClaim": [
+      "That descriptive fields prove model authorship, identity beyond the signing key, or events outside the recorded path.",
+      "That schema acceptance proves application workflow constraints or external execution."
+    ]
+  },
+  "predicates": []
+}

@@ -1,0 +1,101 @@
+{
+  "group": "recurse.r5e.io",
+  "version": "v1alpha1",
+  "kind": "ActionResult",
+  "substrate": "event",
+  "naming": {
+    "mode": "content"
+  },
+  "description": "The recorded actor submitted this ActionResult under the cited authority; operational claims remain scoped to the recorded evidence.",
+  "schema": {
+    "properties": {
+      "toolCall": {
+        "type": "ref",
+        "ref": {
+          "event": [
+            "gateway.r5e.io/v1alpha1/ToolCall"
+          ],
+          "outcome": "admitted"
+        }
+      },
+      "sessionBinding": {
+        "type": "ref",
+        "ref": {
+          "event": [
+            "recurse.r5e.io/v1alpha1/SessionBinding"
+          ],
+          "outcome": "admitted"
+        }
+      },
+      "operationId": {
+        "type": "string"
+      },
+      "outcome": {
+        "type": "string",
+        "enum": [
+          "succeeded",
+          "failed",
+          "unknown",
+          "not_dispatched"
+        ]
+      },
+      "result": {
+        "type": "ref",
+        "ref": {
+          "bytes": true,
+          "retention": "public-record"
+        }
+      },
+      "assessment": {
+        "type": "ref",
+        "ref": {
+          "bytes": true,
+          "retention": "public-record"
+        }
+      },
+      "repositoryState": {
+        "type": "object",
+        "properties": {
+          "repoId": {
+            "type": "string"
+          },
+          "oid": {
+            "type": "string"
+          },
+          "objectFormat": {
+            "type": "string",
+            "enum": [
+              "sha1",
+              "sha256"
+            ]
+          }
+        },
+        "required": [
+          "repoId",
+          "oid",
+          "objectFormat"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "required": [
+      "toolCall",
+      "sessionBinding",
+      "operationId",
+      "outcome",
+      "result"
+    ],
+    "additionalProperties": false
+  },
+  "requiresAuthority": true,
+  "epistemicScope": {
+    "claims": [
+      "The recorded actor admitted these ActionResult fields at this chain position under the resolved authority."
+    ],
+    "doesNotClaim": [
+      "That descriptive fields prove model authorship, identity beyond the signing key, or events outside the recorded path.",
+      "That schema acceptance proves application workflow constraints or external execution."
+    ]
+  },
+  "predicates": []
+}

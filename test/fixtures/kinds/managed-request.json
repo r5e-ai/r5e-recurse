@@ -1,0 +1,59 @@
+{
+  "valid": {
+    "sessionBinding": {
+      "$ref": "event:sha256:3333333333333333333333333333333333333333333333333333333333333333"
+    },
+    "llmCall": {
+      "$ref": "event:sha256:3333333333333333333333333333333333333333333333333333333333333333"
+    },
+    "inboundBody": {
+      "$ref": "bytes:sha256:2222222222222222222222222222222222222222222222222222222222222222"
+    },
+    "outboundBody": {
+      "$ref": "bytes:sha256:2222222222222222222222222222222222222222222222222222222222222222"
+    },
+    "bodyDigest": "example",
+    "firstInput": {
+      "fieldPath": "example",
+      "digest": "example"
+    },
+    "method": "example",
+    "path": "example",
+    "upstream": "example",
+    "transport": "example",
+    "semanticHeaders": [
+      {
+        "name": "example",
+        "value": "example"
+      }
+    ],
+    "operationId": "example"
+  },
+  "invalid": {
+    "llmCall": {
+      "$ref": "event:sha256:3333333333333333333333333333333333333333333333333333333333333333"
+    },
+    "inboundBody": {
+      "$ref": "bytes:sha256:2222222222222222222222222222222222222222222222222222222222222222"
+    },
+    "outboundBody": {
+      "$ref": "bytes:sha256:2222222222222222222222222222222222222222222222222222222222222222"
+    },
+    "bodyDigest": "example",
+    "firstInput": {
+      "fieldPath": "example",
+      "digest": "example"
+    },
+    "method": "example",
+    "path": "example",
+    "upstream": "example",
+    "transport": "example",
+    "semanticHeaders": [
+      {
+        "name": "example",
+        "value": "example"
+      }
+    ],
+    "operationId": "example"
+  }
+}

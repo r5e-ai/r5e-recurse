@@ -1,0 +1,13 @@
+{
+  "valid": {
+    "commandId": "example",
+    "operation": "submit_task",
+    "payloadDigest": "example",
+    "target": "example"
+  },
+  "invalid": {
+    "operation": "submit_task",
+    "payloadDigest": "example",
+    "target": "example"
+  }
+}
