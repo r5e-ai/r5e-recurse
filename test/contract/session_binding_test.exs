@@ -163,6 +163,54 @@ defmodule R5eRecurse.SessionBindingTest do
     assert is_binary(id) and is_binary(ref)
   end
 
+  test "durable HTTP driver recovers the same span and binding without new admissions", ctx do
+    {:ok, _} = Application.ensure_all_started(:inets)
+    {:ok, _} = Application.ensure_all_started(:ssl)
+    {:ok, server} = Bandit.start_link(plug: R5e.HTTP.Router, port: 0, ip: {127, 0, 0, 1})
+    {:ok, {_, port}} = ThousandIsland.listener_info(server)
+    client = R5eRecurse.KernelClient.new("http://127.0.0.1:#{port}")
+    keys = start_supervised!(SessionKeys)
+    {:ok, key} = SessionKeys.create(keys, "durable", self())
+    opts = options(ctx, keys, key)
+
+    directory =
+      Path.join(System.tmp_dir!(), "binding-journal-#{System.unique_integer([:positive])}")
+
+    on_exit(fn -> File.rm_rf!(directory) end)
+
+    {:ok, journal} =
+      R5eRecurse.NonceJournal.start_link(
+        directory: directory,
+        origin: opts.origin,
+        boot_id: key.generation["bootId"],
+        client: client
+      )
+
+    driver = R5eRecurse.SessionBinding.KernelDriver.new(journal, client, key.generation)
+    assert {:ok, first} = SessionBinding.admit(driver, keys, key.generation, opts)
+    count = length(R5e.Log.events())
+    assert {:ok, second} = SessionBinding.admit(driver, keys, key.generation, opts)
+    assert second.span.event_ref == first.span.event_ref
+    assert second.binding.event_ref == first.binding.event_ref
+    assert length(R5e.Log.events()) == count
+    assert length(Path.wildcard(Path.join(directory, "*.json"))) == 2
+    SessionKeys.destroy(keys, key.generation)
+
+    recovered =
+      R5eRecurse.SessionBinding.KernelDriver.recover(journal, [
+        first.span.operation_id,
+        first.binding.operation_id
+      ])
+
+    assert {:ok, recovered_span, _} = recovered[first.span.operation_id]
+    assert {:ok, recovered_binding, _} = recovered[first.binding.operation_id]
+    assert recovered_span["eventRef"] == first.span.event_ref
+    assert recovered_binding["eventRef"] == first.binding.event_ref
+    assert length(R5e.Log.events()) == count
+    GenServer.stop(journal)
+    Supervisor.stop(server)
+  end
+
   defp options(ctx, keys, key, role \\ :producer) do
     {:ok, role_kinds} = Authority.Kinds.for_role(role)
 

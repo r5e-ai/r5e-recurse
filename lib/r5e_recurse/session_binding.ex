@@ -179,6 +179,9 @@ defmodule R5eRecurse.SessionBinding do
       {:denied, %{"recorded" => true, "outcome" => "denied"} = receipt, _} ->
         {:denied, receipt}
 
+      {:conflict, details} ->
+        {:conflict, details}
+
       {:not_submitted, reason} ->
         {:error, reason}
 
