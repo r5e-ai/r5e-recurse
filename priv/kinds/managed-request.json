@@ -1,0 +1,125 @@
+{
+  "group": "recurse.r5e.io",
+  "version": "v1alpha1",
+  "kind": "ManagedRequest",
+  "substrate": "event",
+  "naming": {
+    "mode": "content"
+  },
+  "description": "The recorded actor submitted this ManagedRequest under the cited authority; operational claims remain scoped to the recorded evidence.",
+  "schema": {
+    "properties": {
+      "sessionBinding": {
+        "type": "ref",
+        "ref": {
+          "event": [
+            "recurse.r5e.io/v1alpha1/SessionBinding"
+          ],
+          "outcome": "admitted"
+        }
+      },
+      "llmCall": {
+        "type": "ref",
+        "ref": {
+          "event": [
+            "gateway.r5e.io/v1alpha1/LlmCall"
+          ],
+          "outcome": "admitted"
+        }
+      },
+      "inboundBody": {
+        "type": "ref",
+        "ref": {
+          "bytes": true,
+          "retention": "public-record"
+        }
+      },
+      "outboundBody": {
+        "type": "ref",
+        "ref": {
+          "bytes": true,
+          "retention": "public-record"
+        }
+      },
+      "bodyDigest": {
+        "type": "string"
+      },
+      "firstInput": {
+        "type": "object",
+        "properties": {
+          "fieldPath": {
+            "type": "string"
+          },
+          "digest": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "fieldPath",
+          "digest"
+        ],
+        "additionalProperties": false
+      },
+      "method": {
+        "type": "string"
+      },
+      "path": {
+        "type": "string"
+      },
+      "upstream": {
+        "type": "string"
+      },
+      "transport": {
+        "type": "string"
+      },
+      "semanticHeaders": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "value": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "name",
+            "value"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "operationId": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "sessionBinding",
+      "llmCall",
+      "inboundBody",
+      "outboundBody",
+      "bodyDigest",
+      "firstInput",
+      "method",
+      "path",
+      "upstream",
+      "transport",
+      "semanticHeaders",
+      "operationId"
+    ],
+    "additionalProperties": false
+  },
+  "requiresAuthority": true,
+  "epistemicScope": {
+    "claims": [
+      "The recorded actor admitted these ManagedRequest fields at this chain position under the resolved authority."
+    ],
+    "doesNotClaim": [
+      "That descriptive fields prove model authorship, identity beyond the signing key, or events outside the recorded path.",
+      "That schema acceptance proves application workflow constraints or external execution."
+    ]
+  },
+  "predicates": []
+}

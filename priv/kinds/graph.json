@@ -1,0 +1,48 @@
+{
+  "group": "recurse.r5e.io",
+  "version": "v1alpha1",
+  "kind": "Graph",
+  "substrate": "resource",
+  "naming": {
+    "mode": "server"
+  },
+  "description": "The recorded actor submitted this Graph under the cited authority; operational claims remain scoped to the recorded evidence.",
+  "schema": {
+    "properties": {
+      "id": {
+        "type": "string"
+      },
+      "class": {
+        "type": "string",
+        "enum": [
+          "codebase",
+          "workflow"
+        ]
+      },
+      "objective": {
+        "type": "ref",
+        "ref": {
+          "bytes": true,
+          "retention": "public-record"
+        }
+      }
+    },
+    "required": [
+      "id",
+      "class",
+      "objective"
+    ],
+    "additionalProperties": false
+  },
+  "requiresAuthority": true,
+  "epistemicScope": {
+    "claims": [
+      "The recorded actor admitted these Graph fields at this chain position under the resolved authority."
+    ],
+    "doesNotClaim": [
+      "That descriptive fields prove model authorship, identity beyond the signing key, or events outside the recorded path.",
+      "That schema acceptance proves application workflow constraints or external execution."
+    ]
+  },
+  "predicates": []
+}

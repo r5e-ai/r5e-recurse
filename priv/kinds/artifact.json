@@ -1,0 +1,141 @@
+{
+  "group": "recurse.r5e.io",
+  "version": "v1alpha1",
+  "kind": "Artifact",
+  "substrate": "event",
+  "naming": {
+    "mode": "content"
+  },
+  "description": "The recorded actor submitted this Artifact under the cited authority; operational claims remain scoped to the recorded evidence.",
+  "schema": {
+    "properties": {
+      "type": {
+        "type": "string",
+        "enum": [
+          "work",
+          "trace",
+          "review_findings",
+          "reflection",
+          "lesson",
+          "evaluation"
+        ]
+      },
+      "content": {
+        "type": "ref",
+        "ref": {
+          "bytes": true,
+          "retention": "public-record"
+        }
+      },
+      "mediaType": {
+        "type": "string"
+      },
+      "sessionBinding": {
+        "type": "ref",
+        "ref": {
+          "event": [
+            "recurse.r5e.io/v1alpha1/SessionBinding"
+          ],
+          "outcome": "admitted"
+        }
+      },
+      "earlierArtifact": {
+        "type": "ref",
+        "ref": {
+          "event": [
+            "recurse.r5e.io/v1alpha1/Artifact"
+          ],
+          "outcome": "admitted"
+        }
+      },
+      "sources": {
+        "type": "array",
+        "items": {
+          "type": "ref",
+          "ref": {
+            "event": [
+              "recurse.r5e.io/v1alpha1/Graph",
+              "recurse.r5e.io/v1alpha1/Node",
+              "recurse.r5e.io/v1alpha1/Task",
+              "recurse.r5e.io/v1alpha1/SessionBinding",
+              "recurse.r5e.io/v1alpha1/ContextManifest",
+              "recurse.r5e.io/v1alpha1/Artifact",
+              "recurse.r5e.io/v1alpha1/LifecycleEvent",
+              "recurse.r5e.io/v1alpha1/Command",
+              "recurse.r5e.io/v1alpha1/Review",
+              "recurse.r5e.io/v1alpha1/Decision",
+              "recurse.r5e.io/v1alpha1/RecoveryDecision",
+              "recurse.r5e.io/v1alpha1/ReconciliationObservation",
+              "recurse.r5e.io/v1alpha1/ManagedRequest",
+              "recurse.r5e.io/v1alpha1/ActionResult",
+              "recurse.r5e.io/v1alpha1/LessonWithdrawal",
+              "recurse.r5e.io/v1alpha1/PolicyBundle",
+              "core.r5e.io/v1/KindDefinition",
+              "core.r5e.io/v1/CasObject",
+              "core.r5e.io/v1/Badge",
+              "core.r5e.io/v1/Endorsement",
+              "core.r5e.io/v1/Revocation",
+              "gateway.r5e.io/v1alpha1/AgentSession",
+              "gateway.r5e.io/v1alpha1/Prompt",
+              "gateway.r5e.io/v1alpha1/LlmCall",
+              "gateway.r5e.io/v1alpha1/Completion",
+              "gateway.r5e.io/v1alpha1/LlmResponse",
+              "gateway.r5e.io/v1alpha1/ToolCall"
+            ],
+            "outcome": "admitted"
+          }
+        }
+      },
+      "completeness": {
+        "type": "string",
+        "enum": [
+          "complete",
+          "partial"
+        ]
+      },
+      "repoAssociation": {
+        "type": "object",
+        "properties": {
+          "repoId": {
+            "type": "string"
+          },
+          "oid": {
+            "type": "string"
+          },
+          "objectFormat": {
+            "type": "string",
+            "enum": [
+              "sha1",
+              "sha256"
+            ]
+          }
+        },
+        "required": [
+          "repoId",
+          "oid",
+          "objectFormat"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "required": [
+      "type",
+      "content",
+      "mediaType",
+      "sources",
+      "completeness"
+    ],
+    "additionalProperties": false
+  },
+  "requiresAuthority": true,
+  "epistemicScope": {
+    "claims": [
+      "The recorded actor admitted these Artifact fields at this chain position under the resolved authority."
+    ],
+    "doesNotClaim": [
+      "That descriptive fields prove model authorship, identity beyond the signing key, or events outside the recorded path.",
+      "That schema acceptance proves application workflow constraints or external execution."
+    ]
+  },
+  "predicates": []
+}
