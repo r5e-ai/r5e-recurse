@@ -405,7 +405,17 @@ defmodule R5eRecurse.LifecycleTest do
     {:ok, state} =
       L.apply(
         state,
-        put_in(event("ToolCall", "tool", 8, %{}), ["target", "group"], "gateway.r5e.io")
+        put_in(
+          event(
+            "ToolCall",
+            "tool",
+            8,
+            %{"tool" => "git.push", "args" => %{}, "session" => ref("span")},
+            "session-key"
+          ),
+          ["target", "group"],
+          "gateway.r5e.io"
+        )
       )
 
     result = %{
@@ -603,7 +613,15 @@ defmodule R5eRecurse.LifecycleTest do
       |> List.update_at(0, &put_in(&1, ["spec", "step"], "act"))
       |> List.update_at(2, &put_in(&1, ["spec", "actorType"], "runtime_action"))
 
-    tool = event("ToolCall", "tool", 8, %{}) |> put_in(["target", "group"], "gateway.r5e.io")
+    tool =
+      event(
+        "ToolCall",
+        "tool",
+        8,
+        %{"tool" => "git.push", "args" => %{}, "session" => ref("span")},
+        "session-key"
+      )
+      |> put_in(["target", "group"], "gateway.r5e.io")
 
     result =
       event("ActionResult", "result", 9, %{
@@ -615,6 +633,23 @@ defmodule R5eRecurse.LifecycleTest do
 
     completion = transition("completed", 10, "reflecting", %{"outputs" => [ref("result")]})
     assert {:ok, _} = L.replay(rows ++ [tool, result, completion])
+    # The result observer is intentionally the runtime, distinct from the action-session key.
+    assert result["actor"]["id"] != Enum.at(rows, 2)["actor"]["id"]
+
+    assert {:error, :operational_assessment_required} =
+             L.replay(
+               rows ++ [put_in(tool, ["actor", "id"], "other-session-key"), result, completion]
+             )
+
+    assert {:error, :operational_assessment_required} =
+             L.replay(
+               rows ++ [put_in(tool, ["spec", "session"], ref("other-span")), result, completion]
+             )
+
+    assert {:error, :operational_assessment_required} =
+             L.replay(
+               rows ++ [update_in(tool, ["spec"], &Map.delete(&1, "session")), result, completion]
+             )
 
     for {field, value} <- [
           {"group", "recurse.r5e.io"},

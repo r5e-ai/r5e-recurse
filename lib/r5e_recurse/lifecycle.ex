@@ -163,12 +163,15 @@ defmodule R5eRecurse.Lifecycle do
 
     case get_in(binding, ["spec", "actorType"]) do
       "runtime_action" ->
+        # The action-session key signs ToolCall; the runtime observer signs its
+        # ActionResult/assessment. Observer authorization is checked at admission,
+        # so a valid operational result need not share the binding's actor ID.
         if a.task["spec"]["step"] == "act" and
              Enum.any?(artifacts, fn record ->
                type?(record, "ActionResult") and
                  record["spec"]["sessionBinding"] == s["sessionBinding"] and
                  record["spec"]["assessment"] != nil and record["spec"]["outcome"] == "succeeded" and
-                 type?(get(state, record["spec"]["toolCall"]), "ToolCall", "gateway.r5e.io")
+                 action_tool?(get(state, record["spec"]["toolCall"]), binding)
              end), do: :ok, else: {:error, :operational_assessment_required}
 
       "agent" ->
@@ -192,6 +195,12 @@ defmodule R5eRecurse.Lifecycle do
   end
 
   defp closure_valid(_, _, _), do: :ok
+
+  defp action_tool?(tool, binding) do
+    type?(tool, "ToolCall", "gateway.r5e.io") and same_actor?(tool, binding) and
+      binding["spec"]["agentSession"] != nil and
+      tool["spec"]["session"] == binding["spec"]["agentSession"]
+  end
 
   defp step_artifact?(%{"spec" => s} = artifact, step, binding) do
     types = %{
@@ -275,7 +284,8 @@ defmodule R5eRecurse.Lifecycle do
         kind,
         group,
         version
-      ), do: true
+      ),
+      do: true
 
   def type?(_, _, _, _), do: false
 
