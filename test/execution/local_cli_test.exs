@@ -380,14 +380,18 @@ defmodule R5eRecurse.LocalCLITest do
   test "incomplete capture plus actual exit or signal survives timed-out reconciliation", c do
     supervisor = start_supervised!(Supervisor)
 
+    # A missing final file is checked after target exit. Budget exhaustion can
+    # terminate the target first and legitimately change its observed status.
     for {command, status} <- [
-          {"printf x; exit 9", {:os_exit, 9}},
-          {"printf x; kill -TERM $$", {:os_signal, 15}}
+          {"exit 9", {:os_exit, 9}},
+          {"kill -TERM $$", {:os_signal, 15}}
         ] do
       session = %{
         c.session
-        | budgets: Map.put(c.session.budgets, :trace_bytes, 5),
-          adapter_options: %{c.session.adapter_options | args: ["-c", command]}
+        | adapter_options:
+            c.session.adapter_options
+            |> Map.put(:args, ["-c", command])
+            |> Map.put(:result_file, "missing-result")
       }
 
       {:ok, p} = LocalCLI.prepare(session)
@@ -417,8 +421,12 @@ defmodule R5eRecurse.LocalCLITest do
 
   test "30/31/32 raw boundaries keep paired terminal evidence in one bounded batch", c do
     for count <- [30, 31, 32] do
-      session = %{c.session | budgets: Map.put(c.session.budgets, :trace_bytes, 5)}
-      h = launch(session, ["-c", "printf x; exit 9"])
+      session = %{
+        c.session
+        | adapter_options: Map.put(c.session.adapter_options, :result_file, "missing-result")
+      }
+
+      h = launch(session, ["-c", "exit 9"])
       {broker, _} = h.state
       wait_outcome(broker)
       {:ok, spool} = Spool.create(c.root, "", 10_000)
