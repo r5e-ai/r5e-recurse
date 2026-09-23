@@ -133,8 +133,8 @@ defmodule R5eRecurse.Execution.Worker do
         nil ->
           {:noreply, poll(s)}
 
-        event ->
-          s = %{s | phase: :reconciling, reason: terminal_reason(event)}
+        _event ->
+          s = %{s | phase: :reconciling, reason: terminal_reason(events)}
           {:noreply, invoke(s, :reconcile, [%{handle: handle}])}
       end
     else
@@ -255,11 +255,36 @@ defmodule R5eRecurse.Execution.Worker do
     %{s | timers: Map.put(s.timers, kind, {timer, token})}
   end
 
+  # A batch can report both incomplete capture and an observed target exit.
+  # Keep only the known status fields, so failed reconciliation cannot erase
+  # already observed status or copy arbitrary adapter payload into final state.
+  defp terminal_reason(events) when is_list(events) do
+    exit = Enum.find(events, &(&1.kind == :os_exit))
+    incomplete = Enum.any?(events, &(&1.kind == :capture_incomplete))
+
+    case {incomplete, observed_exit(exit)} do
+      {true, nil} -> :capture_incomplete
+      {true, status} -> %{exit: status, capture: :capture_incomplete}
+      {false, _} -> terminal_reason(exit)
+    end
+  end
+
   defp terminal_reason(%{kind: :os_exit, value: %{code: code}}) when is_integer(code),
     do: {:os_exit, code}
 
+  defp terminal_reason(%{kind: :os_exit, value: %{signal: signal}})
+       when is_integer(signal) and signal in 1..64, do: {:os_signal, signal}
+
   defp terminal_reason(%{kind: :capture_incomplete}), do: :capture_incomplete
   defp terminal_reason(_), do: :terminal_observation
+
+  defp observed_exit(%{value: %{code: code}}) when is_integer(code) and code in 0..255,
+    do: {:os_exit, code}
+
+  defp observed_exit(%{value: %{signal: signal}}) when is_integer(signal) and signal in 1..64,
+    do: {:os_signal, signal}
+
+  defp observed_exit(_), do: nil
 
   defp unknown(s, reason),
     do: %Ownership{

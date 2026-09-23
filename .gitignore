@@ -4,5 +4,8 @@
 .DS_Store
 
 __pycache__/
+
 # Operator-local specification tooling; generated specs remain public.
 /.specify
+
+/priv/launcher/r5e_launch
