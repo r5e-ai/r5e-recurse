@@ -159,7 +159,12 @@ defmodule R5eRecurse.KernelClient do
   end
 
   defp write(client, method, path, body, headers, type) do
-    case request(client, method, path, body, headers, type) do
+    decode_write(request(client, method, path, body, headers, type))
+  end
+
+  @doc "Decode a raw write response using the shared kernel receipt contract."
+  def decode_write(response) do
+    case response do
       {:ok, status, body} when status in [201, 403] ->
         case {status, Jason.decode(body)} do
           {201, {:ok, %{"outcome" => "admitted", "recorded" => true} = receipt}} ->

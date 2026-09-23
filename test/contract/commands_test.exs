@@ -6,9 +6,28 @@ defmodule R5eRecurse.CommandsTest do
 
   defmodule StoreFixture do
     # Explicit contract fixture, not an isolated-kernel acceptance test.
-    def history(pid), do: Agent.get(pid, &{:ok, &1.records})
+    def history(%{pid: pid}) do
+      {records, barrier, failure} =
+        Agent.get_and_update(pid, fn state ->
+          {{state.records, state[:history_barrier], state[:history_failure]},
+           Map.delete(state, :history_barrier)}
+        end)
 
-    def submit(pid, spec, envelope) do
+      if barrier do
+        {owner, ref} = barrier
+        send(owner, {:history_paused, self(), ref})
+        receive do: ({:release_history, ^ref} -> :ok)
+      end
+
+      if failure, do: {:error, :fixture_history_unavailable}, else: {:ok, records}
+    end
+
+    def client(%{client: client}), do: client
+
+    def prepare_submit(%{client: client}, spec, envelope),
+      do: R5eRecurse.Commands.KernelStore.prepare_submit(client, spec, envelope)
+
+    def record(pid, spec, envelope) do
       Agent.get_and_update(pid, fn state ->
         request = envelope["payload"] |> Base.decode64!() |> Jason.decode!()
         seq = length(state.records) + 1
@@ -45,10 +64,19 @@ defmodule R5eRecurse.CommandsTest do
 
         hash = Canonical.hash([seq, payload])
         event = %{"seq" => seq, "hash" => hash}
-        receipt = %{"eventRef" => "event:" <> hash, "outcome" => outcome, "recorded" => true}
+
+        receipt = %{
+          "seq" => seq,
+          "event" => hash,
+          "eventRef" => "event:" <> hash,
+          "outcome" => outcome,
+          "recorded" => true,
+          "identity" => "signed"
+        }
 
         response =
           cond do
+            replay and state.mode == :replay_drop -> {:outcome_unknown, :connection_lost}
             replay -> {:denied, Map.put(receipt, "reason", "nonce replayed")}
             state.mode == :denied -> {:outcome_unknown, :connection_lost}
             state.mode == :drop -> {:outcome_unknown, :connection_lost}
@@ -74,6 +102,39 @@ defmodule R5eRecurse.CommandsTest do
     end
   end
 
+  defmodule HTTPFixture do
+    @behaviour Plug
+    def init(pid), do: pid
+
+    def call(conn, pid) do
+      {:ok, body, conn} = Plug.Conn.read_body(conn)
+      %{"spec" => spec, "envelope" => envelope, "name" => nil} = Jason.decode!(body)
+      true = conn.method == "POST"
+      true = conn.request_path == "/apis/recurse.r5e.io/v1alpha1/Command"
+
+      result = StoreFixture.record(pid, spec, envelope)
+
+      if barrier = Agent.get(pid, & &1[:ack_barrier]) do
+        {owner, ref} = barrier
+        send(owner, {:ack_paused, self(), ref})
+        receive do: ({:release_ack, ^ref} -> :ok)
+      end
+
+      case result do
+        {:ok, receipt} ->
+          Plug.Conn.send_resp(conn, 201, Jason.encode!(receipt))
+
+        {:denied, receipt} ->
+          Plug.Conn.send_resp(conn, 403, Jason.encode!(receipt))
+
+        {:outcome_unknown, _} ->
+          # Corrupt the wire acknowledgement after recording. The client cannot
+          # infer admission from this response; canonical history remains separate.
+          Plug.Conn.send_resp(conn, 201, "incomplete acknowledgement")
+      end
+    end
+  end
+
   setup do
     origin = Canonical.hash(:crypto.strong_rand_bytes(16) |> Base.encode64())
     {public, private} = :crypto.generate_key(:eddsa, :ed25519)
@@ -83,7 +144,16 @@ defmodule R5eRecurse.CommandsTest do
         %{records: [], nonces: MapSet.new(), submissions: 0, mode: :normal}
       end)
 
-    opts = [origin: origin, store: {StoreFixture, store}, operator_keys: [public]]
+    {:ok, http} = Bandit.start_link(plug: {HTTPFixture, store}, port: 0, ip: {127, 0, 0, 1})
+    {:ok, {_, port}} = ThousandIsland.listener_info(http)
+    client = R5eRecurse.KernelClient.new("http://127.0.0.1:#{port}")
+
+    opts = [
+      origin: origin,
+      store: {StoreFixture, %{pid: store, client: client}},
+      operator_keys: [public]
+    ]
+
     {:ok, server} = Commands.start_link(opts)
     on_exit(fn -> if Process.alive?(server), do: GenServer.stop(server) end)
     %{server: server, store: store, origin: origin, public: public, private: private, opts: opts}
@@ -213,8 +283,19 @@ defmodule R5eRecurse.CommandsTest do
 
   test "a separate OS process cannot acquire the active origin lock", ctx do
     directory = "/var/tmp/r5e-recurse-writer-" <> String.replace_prefix(ctx.origin, "sha256:", "")
-    helper = Application.app_dir(:r5e_recurse, "priv/commands/ownership.py")
-    assert {"busy\n", 3} = System.cmd("python3", [helper, directory])
+
+    script = """
+    import fcntl, os, sys
+    fd = os.open(sys.argv[1] + '/writer.lock', os.O_RDWR)
+    try:
+        fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError:
+        print('busy')
+        sys.exit(3)
+    sys.exit(0)
+    """
+
+    assert {"busy\n", 3} = System.cmd("python3", ["-c", script, directory])
 
     assert Enum.sort(Commands.operations()) ==
              Enum.sort(
@@ -224,11 +305,217 @@ defmodule R5eRecurse.CommandsTest do
 
   test "a second BEAM runtime fails command writer startup", ctx do
     script =
-      "Process.flag(:trap_exit, true); IO.inspect(R5eRecurse.Commands.start_link(origin: #{inspect(ctx.origin)}, store: {Unused, nil}))"
+      "Process.flag(:trap_exit, true); IO.inspect(R5eRecurse.Commands.start_link(origin: #{inspect(ctx.origin)}, store: {R5eRecurse.Commands.KernelStore, R5eRecurse.KernelClient.new(\"http://127.0.0.1:1\")}))"
 
     ebin = :code.which(Commands) |> List.to_string() |> Path.dirname()
     assert {output, 0} = System.cmd(System.find_executable("elixir"), ["-pa", ebin, "-e", script])
     assert output =~ "{:error, :writer_ownership_unavailable}"
+  end
+
+  test "lost replay acknowledgements retain distinct attempts without changing semantic history",
+       ctx do
+    command = command(ctx)
+    envelope = signed(ctx, command)
+    assert {:accepted, original} = Commands.submit(ctx.server, command, envelope)
+    Agent.update(ctx.store, &%{&1 | mode: :replay_drop})
+
+    assert {:outcome_unknown, %{attempt_id: first}} =
+             Commands.submit(ctx.server, command, envelope)
+
+    assert {:outcome_unknown, %{attempt_id: second}} =
+             Commands.submit(ctx.server, command, envelope)
+
+    assert first != second
+    directory = "/var/tmp/r5e-recurse-writer-" <> String.replace_prefix(ctx.origin, "sha256:", "")
+
+    for attempt <- [first, second] do
+      record =
+        File.read!(Path.join([directory, "replay-v1", attempt <> ".json"])) |> Jason.decode!()
+
+      assert record["attempt_id"] == attempt
+      assert record["origin"] == ctx.origin
+    end
+
+    assert {:existing, ^original} = Commands.lookup(ctx.server, caller(ctx), "stable")
+    assert Agent.get(ctx.store, & &1.submissions) == 3
+    GenServer.stop(ctx.server)
+    {:ok, restarted} = Commands.start_link(ctx.opts)
+    assert {:existing, ^original} = Commands.lookup(restarted, caller(ctx), "stable")
+    assert Agent.get(ctx.store, & &1.submissions) == 3
+    assert length(Path.wildcard(Path.join([directory, "replay-v1", "*.json"]))) == 2
+    GenServer.stop(restarted)
+  end
+
+  test "hard broker death preserves the caller's published replay attempt identity", ctx do
+    command = command(ctx)
+    envelope = signed(ctx, command)
+    assert {:accepted, _} = Commands.submit(ctx.server, command, envelope)
+    owner = self()
+    barrier = make_ref()
+    Agent.update(ctx.store, &Map.put(&1, :ack_barrier, {owner, barrier}))
+    %{broker: broker, lifetime: lifetime} = :sys.get_state(ctx.server)
+    client = ctx.opts |> Keyword.fetch!(:store) |> elem(1) |> Map.fetch!(:client)
+    {:ok, spec} = Commands.command_spec(command, caller(ctx))
+    {:ok, descriptor} = R5eRecurse.Commands.KernelStore.prepare_submit(client, spec, envelope)
+    Process.unlink(ctx.server)
+
+    pending =
+      Task.async(fn ->
+        R5eRecurse.Commands.Ownership.dispatch(broker, lifetime, :replay, descriptor)
+      end)
+
+    assert_receive {:ack_paused, http, ^barrier}, 2000
+
+    try do
+      Process.exit(broker, :kill)
+      assert {:outcome_unknown, %{attempt_id: attempt}} = Task.await(pending, 2000)
+
+      directory =
+        "/var/tmp/r5e-recurse-writer-" <> String.replace_prefix(ctx.origin, "sha256:", "")
+
+      record =
+        File.read!(Path.join([directory, "replay-v1", attempt <> ".json"])) |> Jason.decode!()
+
+      assert record["attempt_id"] == attempt
+      assert record["origin"] == ctx.origin
+      assert Agent.get(ctx.store, & &1.submissions) == 2
+    after
+      send(http, {:release_ack, barrier})
+    end
+  end
+
+  test "lost finalize acknowledgement returns uncertainty with the known admission", ctx do
+    command = command(ctx)
+    owner = self()
+    barrier = make_ref()
+    Agent.update(ctx.store, &Map.put(&1, :ack_barrier, {owner, barrier}))
+    %{broker: broker} = :sys.get_state(ctx.server)
+    %{port: port} = :sys.get_state(broker)
+    {:os_pid, os_pid} = Port.info(port, :os_pid)
+    pending = Task.async(fn -> Commands.submit(ctx.server, command, signed(ctx, command)) end)
+    assert_receive {:ack_paused, http, ^barrier}, 2000
+
+    try do
+      :ok = :sys.suspend(broker)
+      send(http, {:release_ack, barrier})
+      wait_for_message(broker, port, System.monotonic_time(:millisecond) + 800)
+
+      assert {_, 0} =
+               System.cmd("python3", [
+                 "-c",
+                 "import os,signal,sys; os.kill(int(sys.argv[1]), signal.SIGSTOP)",
+                 Integer.to_string(os_pid)
+               ])
+
+      :ok = :sys.resume(broker)
+
+      assert {:outcome_unknown,
+              %{reason: :finalization_failed, known_outcome: {:accepted, known}}} =
+               Task.await(pending, 3000)
+
+      assert known.outcome == "admitted"
+      assert {:existing, ^known} = Commands.lookup(ctx.server, caller(ctx), "stable")
+      assert Agent.get(ctx.store, & &1.submissions) == 1
+    after
+      send(http, {:release_ack, barrier})
+      if Process.alive?(broker), do: :sys.resume(broker)
+
+      System.cmd("python3", [
+        "-c",
+        "import os,signal,sys\ntry: os.kill(int(sys.argv[1]), signal.SIGCONT)\nexcept ProcessLookupError: pass",
+        Integer.to_string(os_pid)
+      ])
+    end
+  end
+
+  defp wait_for_message(broker, port, deadline) do
+    {:messages, messages} = Process.info(broker, :messages)
+
+    if Enum.any?(messages, fn
+         {^port, {:data, _}} -> true
+         _ -> false
+       end) do
+      :ok
+    else
+      assert System.monotonic_time(:millisecond) < deadline,
+             "helper did not return its receipt before finalize deadline"
+
+      Process.sleep(5)
+      wait_for_message(broker, port, deadline)
+    end
+  end
+
+  test "unavailable canonical history stays unknown and never dispatches", ctx do
+    Agent.update(ctx.store, &Map.put(&1, :history_failure, true))
+    command = command(ctx)
+    assert {:outcome_unknown, _} = Commands.submit(ctx.server, command, signed(ctx, command))
+    assert Agent.get(ctx.store, & &1.submissions) == 0
+  end
+
+  test "partial legacy pending marker is unresolved rather than a payload conflict", ctx do
+    command = command(ctx)
+    {:ok, spec} = Commands.command_spec(command, caller(ctx))
+    directory = "/var/tmp/r5e-recurse-writer-" <> String.replace_prefix(ctx.origin, "sha256:", "")
+    path = Path.join(directory, Canonical.hash([caller(ctx), spec["commandId"]]) <> ".pending")
+    File.write!(path, "sha256:incomplete")
+    assert {:outcome_unknown, _} = Commands.submit(ctx.server, command, signed(ctx, command))
+    assert File.read!(path) == "sha256:incomplete"
+    assert Agent.get(ctx.store, & &1.submissions) == 0
+  end
+
+  for mode <- [:normal, :replay] do
+    @dispatch_mode mode
+    test "helper loss fences paused #{@dispatch_mode} dispatch after replacement acquisition",
+         ctx do
+      mode = @dispatch_mode
+      command = command(ctx)
+      envelope = signed(ctx, command)
+
+      if mode == :replay,
+        do: assert({:accepted, _} = Commands.submit(ctx.server, command, envelope))
+
+      baseline = Agent.get(ctx.store, & &1.submissions)
+      %{broker: broker} = :sys.get_state(ctx.server)
+      %{port: port} = :sys.get_state(broker)
+      {:os_pid, os_pid} = Port.info(port, :os_pid)
+      port_monitor = Port.monitor(port)
+      Process.unlink(ctx.server)
+      barrier = make_ref()
+      owner = self()
+      Agent.update(ctx.store, &Map.put(&1, :history_barrier, {owner, barrier}))
+
+      pending =
+        Task.async(fn ->
+          try do
+            Commands.submit(ctx.server, command, envelope)
+          catch
+            :exit, reason -> {:owner_exited, reason}
+          end
+        end)
+
+      assert_receive {:history_paused, callback, ^barrier}
+
+      replacement =
+        try do
+          assert {_, 0} =
+                   System.cmd("python3", [
+                     "-c",
+                     "import os,signal,sys; os.kill(int(sys.argv[1]), signal.SIGKILL)",
+                     Integer.to_string(os_pid)
+                   ])
+
+          assert_receive {:DOWN, ^port_monitor, :port, ^port, _}, 2000
+          {:ok, replacement} = Commands.start_link(ctx.opts)
+          replacement
+        after
+          send(callback, {:release_history, barrier})
+        end
+
+      assert {tag, _} = Task.await(pending, 2000)
+      assert tag in [:owner_exited, :outcome_unknown]
+      assert Agent.get(ctx.store, & &1.submissions) == baseline
+      GenServer.stop(replacement)
+    end
   end
 
   test "operator helper signs exact PAE bytes and verifies externally returned signature", ctx do

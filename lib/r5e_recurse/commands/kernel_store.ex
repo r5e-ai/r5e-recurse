@@ -20,7 +20,17 @@ defmodule R5eRecurse.Commands.KernelStore do
     end
   end
 
-  def submit(client, spec, envelope),
-    do:
-      apply(KernelClient, :submit, [client, R5eRecurse.Commands.Envelope.target(), envelope, spec])
+  def client(client), do: client
+
+  def prepare_submit(_client, spec, envelope) do
+    body = Jason.encode!(%{envelope: envelope, spec: spec, name: nil})
+
+    {:ok,
+     %{
+       spec: spec,
+       envelope: envelope,
+       body: body,
+       body_digest: "sha256:" <> Base.encode16(:crypto.hash(:sha256, body), case: :lower)
+     }}
+  end
 end
